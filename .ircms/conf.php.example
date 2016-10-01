@@ -1,0 +1,34 @@
+<?php
+	/**
+	 * Configuration file, edit the content to change the behavior of the framework
+	 */
+
+	/**
+	 * Debug mode, increase the verbosity and disable cache and other optimzation.
+	 */
+	define('IRCMS_CONF_DEBUG', true);
+
+	/**
+	 * The path of the cache.
+	 * If unset the cache is disable. If set but the location does not exsits, automatically create it.
+	 * The path is relative to the root directory of IRCMS.
+	 */
+	define('IRCMS_CONF_CACHE', '.cache/');
+
+	/**
+	 * Enable the access privileges
+	 */
+	define('IRCMS_CONF_ACCESS', false);
+
+	/**
+	 * Path where the root of the content is located.
+	 * This path is relative to the location where the .ircms folder is located.
+	 */
+	define('IRCMS_CONF_DATA', './');
+
+	/**
+	 * The theme of the framework, this is used for predefined page content such as the admin area or
+	 * errors and so on.
+	 */
+	define('IRCMS_CONF_THEME', '.ircms/theme/default');
+?>

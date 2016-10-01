@@ -1,0 +1,30 @@
+# Force PHP v5
+SetEnv PHP_VER 5
+
+# Only index.php is the entry point
+DirectoryIndex index.php
+
+# Default Charset
+AddDefaultCharset UTF-8
+
+# Deny access to password file, important for security reasons
+<Files ".ircmspwd">
+	Order Allow,Deny
+	Deny from all
+</Files>
+
+<IfModule mod_rewrite.c>
+	RewriteEngine on
+
+	# Admin area, change admin to .irmcs/page/admin
+	RewriteRule ^admin(.*)$ .ircms/page/admin$1 [NE,L]
+
+	# Login area, change access to .irmcs/page/access
+	RewriteRule ^access(.*)$ .ircms/page/access$1 [NE,L]
+
+	# Change http://www.mywebsite.com/my/path/ to http://www.mywebsite.com/index.php?path=/my/path/
+	# QSA is to prepend the query string after the rewriting
+	# L is to stop the htaccess processing
+	RewriteCond "%{REQUEST_URI}" "!/index.php"
+	RewriteRule ^(.*)$ index.php?path=$1 [QSA,NE,L]
+</ifModule>

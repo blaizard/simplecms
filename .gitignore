@@ -1,0 +1,10 @@
+/*
+
+# Except everything in this directory
+!/.ircms/
+/.ircms/conf.php
+
+# But not these files...
+!.gitignore
+!.htaccess
+!index.php

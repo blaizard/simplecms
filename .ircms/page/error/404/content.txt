@@ -1,0 +1,7 @@
+---ircms-content---
+
+<h1>404</h1>
+<?php
+	echo "<p>Sorry, the page you requested (<a href=\"".htmlentities($_GET['url'])."\">".htmlentities($_GET['url'])."</a>) cannot be found.</p>";
+	echo "<p>Go back to a safe place by clicking <a href=\"".htmlentities($this->env("url", "root"))."\">here</a>.</p>";
+?>

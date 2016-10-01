@@ -1,0 +1,83 @@
+---ircms-content---
+
+<?php
+	/* Load dependencies */
+	$this->jsHeader("deps/script.js");
+	$this->cssHeader("deps/style.css");
+	$this->jsHeader("/.ircms/deps/irexplorer.min.js");
+	$this->jsHeader("/.ircms/deps/ircom.js");
+
+	/* Deal with the "admin_path" query, which is the current path */
+	if (isset($_GET['admin_path'])) {
+		$_SESSION['admin_path'] = IrcmsUrl::toPath($_GET['admin_path']);
+	}
+	if (!isset($_SESSION['admin_path']) || !$_SESSION['admin_path']) {
+		$_SESSION['admin_path'] = "/";
+	}
+	/* Make sure the path exists, if not go up one dir until a valid path is found */
+	while (!@is_dir(IRCMS_DATA.$_SESSION['admin_path'])) {
+		$_SESSION['admin_path'] = dirname($_SESSION['admin_path']);
+	}
+	$_SESSION['admin_path'] = rtrim($_SESSION['admin_path'], DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+?>
+<script type="text/javascript">
+<!--
+	/* Set the main path */
+	var adminPath = "<?php echo $_SESSION['admin_path']; ?>";
+	/* Set the default environement */
+	$().irexplorer.defaults.irexplorer.current = adminPath;
+	$().irexplorer.defaults.apiURL = "/admin/api.php?type=irexplorer";
+//-->
+</script>
+
+<div class="ircms_header">
+	<div class="ircms_menu_trigger" onclick="javascript:ircms_layout_toggle_menu();"></div>
+	<div class="ircms_title">IRCMS</div>
+	<div class="ircms_menu">
+		<div class="ircms_item <?php if (basename($this->env("path")) == "documentation") echo "ircms_item_select"; ?>" onclick="javascript:document.location.href='<?php echo IrcmsPath::toUrl("/admin/documentation/"); ?>';">Doc</div>
+		<div class="ircms_item <?php if (basename($this->env("path")) == "explorer") echo "ircms_item_select"; ?>" onclick="javascript:document.location.href='<?php echo IrcmsPath::toUrl("/admin/explorer/"); ?>';">Explorer</div>
+		<div class="ircms_item <?php if (basename($this->env("path")) == "content") echo "ircms_item_select"; ?>" onclick="javascript:document.location.href='<?php echo IrcmsPath::toUrl("/admin/content/"); ?>';">Content</div>
+	</div>
+	<div style="clear: both;"></div>
+</div>
+<div class="ircms_path_header">
+	<div class="ircms_title">Path:</div>
+	<div class="ircms_path">
+		<?php
+			/* Generate the breadcrum */
+			$breadcrumb = IrcmsPath::breadcrumb($_SESSION['admin_path']);
+			/* Print the exploded path */
+			foreach ($breadcrumb as $item) {
+				echo "<div class=\"ircms_item\" onclick=\"javascript:document.location.href='".$this->env("url", "current")."?admin_path=".IrcmsPath::toUrl($item[1])."';\">".$item[0]."</div>";
+			}
+		?>
+		<div class="ircms_item" onclick="javascript:browseAndGo();">&nbsp;<span class="glyphicon glyphicon-triangle-bottom" aria-hidden="true"></span>&nbsp;</div>
+	</div>
+	<div style="clear: both;"></div>
+</div>
+<div class="ircms_content">
+	<?php
+		echo $this->dataInclude("subcontent");
+	?>
+</div>
+<div class="ircms_footer">
+	Powered by IRCMS - Administration Site
+</div>
+
+<script type="text/javascript">
+	$(function() {
+		/* This function is used to monitor the window size */
+		$(window).resize(function() {
+			var width = $(window).width();
+			$("body").removeClass("ircms_layout_mobile");
+			if (width < 600) {
+				$("body").addClass("ircms_layout_mobile");
+				ircms_layout_hide_menu();
+			}
+			else {
+				ircms_layout_show_menu();
+			}
+		});
+		$(window).trigger("resize");
+	});
+</script>

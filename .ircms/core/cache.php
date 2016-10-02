@@ -16,6 +16,7 @@
 		private $_path;
 		private $_deps;
 		private $_options;
+		private $_config;
 
 		public function __construct($options, $file = null) {
 
@@ -34,10 +35,14 @@
 				 */
 				"invalid_time" => 3600 * 24,
 				/**
+				 * This will run the clean function after every interval
+				 */
+				"clean_interval" => 3600,
+				/**
 				 * The maximum number of files to check for garbage collection at a time. If set to 0,
 				 * it will loop through everything.
 				 */
-				"chunk" => 10,
+				"clean_chunk" => 10,
 				/**
 				 * To enable or disable the cache
 				 */
@@ -61,24 +66,26 @@
 				$this->_path = $this->_options["path"].DIRECTORY_SEPARATOR.ltrim($this->_id, DIRECTORY_SEPARATOR);
 			}
 
+			/* Build the config file full path */
+			$this->_config = $this->_options["path"].DIRECTORY_SEPARATOR.ltrim($this->_options["config"], DIRECTORY_SEPARATOR);
+
 			/* Clean the cache if needed */
-			$this->clean();
+			if (!file_exists($this->_config) || time() - filemtime($this->_config) > $this->_options["clean_interval"]) {
+				$this->clean($this->_options["clean_chunk"]);
+			}
 		}
 
 		/**
 		 * This function is a garbage collector of the cache and will clean it.
 		 * It will go through each files and make sure they are still valid, if not, it will remove them.
 		 */
-		public function clean() {
-
-			/* Generate the cache full path */
-			$cache_file = $this->_options["path"].DIRECTORY_SEPARATOR.ltrim($this->_options["config"], DIRECTORY_SEPARATOR);
+		public function clean($chunk = -1) {
 
 			/* Open and lock the file, to ensure that only 1 instance is running at a time */
-			$fp = @fopen($cache_file, "r+");
+			$fp = @fopen($this->_config, "r+");
 			/* If the file does not exists, create it */
 			if (!$fp) {
-				$fp = fopen($cache_file, "w");
+				$fp = fopen($this->_config, "w");
 			}
 			/* Lock the file, if the file is already locked just return */
 			if (!flock($fp, LOCK_EX | LOCK_NB)) {
@@ -86,8 +93,8 @@
 			}
 			/* Read and decode the content */
 			$config = array();
-			$filesize = filesize($cache_file);
-			if ($filesize && (($content = fread($fp, $filesize)) !== false)) {
+			$filesize = filesize($this->_config);
+			if ($chunk > 0 && $filesize && (($content = fread($fp, $filesize)) !== false)) {
 				$config = json_decode($content, true);
 				$config = (!is_array($config)) ? array() : $config;
 			}
@@ -97,7 +104,7 @@
 			), $config);
 
 			/* Collect the garbage */
-			$config = $this->_garbageCollect($config, $this->_options["chunk"]);
+			$config = $this->_garbageCollect($config, $chunk);
 
 			/* Write the new configuration file */
 			ftruncate($fp, 0);
@@ -114,7 +121,7 @@
 		private function _garbageCollect($config, $chunk) {
 
 			if (IRCMS_CACHE_DEBUG) {
-				echo "<!-- Cache starts at `".$config["path"]."' (chunk=".$this->_options["chunk"].") //-->\n";
+				echo "<!-- Cache starts at `".$config["path"]."' (chunk=".$chunk.") //-->\n";
 			}
 
 			/* Initialize the current path

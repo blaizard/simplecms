@@ -1,5 +1,9 @@
 ---ircms-content---
 
+<?php
+	/* Do not cache any of this */
+	$this->cache()->disable();
+?>
 <h1>404</h1>
 <?php
 	echo "<p>Sorry, the page you requested (<a href=\"".htmlentities($_GET['url'])."\">".htmlentities($_GET['url'])."</a>) cannot be found.</p>";

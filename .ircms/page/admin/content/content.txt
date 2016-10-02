@@ -7,7 +7,8 @@
 
 	/* Load the current adminPath environement */
 	$adminEnv = new IrcmsEnv($_SESSION['admin_path']);
-	$adminContent = new IrcmsContent($adminEnv);
+	/* Get the content linked it with the current cache to be invalidated if the content change */
+	$adminContent = new IrcmsContent($adminEnv, $this->cache());
 
 	$breadcrumb = IrcmsPath::breadcrumb($_SESSION['admin_path']);
 ?>

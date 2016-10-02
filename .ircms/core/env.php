@@ -63,6 +63,15 @@
 		}
 
 		/**
+		 * Get a unique representation of the environement.
+		 * This can be used as an ID for the cache for example.
+		 * Note json_encode is used instead of serialize because it is more than twice faster.
+		 */
+		public function id() {
+			return md5(json_encode($this->get()).json_encode($_GET).json_encode($_POST));
+		}
+
+		/**
 		 * Add a value to the environment
 		 */
 		public function add($arg1, $arg2, $arg3 = null) {

@@ -5,7 +5,6 @@
 	 * Important: It must be escapped with 'htmlentities' to avoid conflict with the 'editors'.
 	 */
 	define('IRCMS_HEADER_TAG', "IRCMSHEADER");
-	define('IRCMS_BODY_TAG', "IRCMSJAVASCRIPT");
 
 	class IrcmsPage {
 
@@ -14,9 +13,9 @@
 		private $_cssHeader;
 		private $_jsHeader;
 		private $_header;
-		private $_jsInline;
 		private $_data;
 		private $_pathHistory;
+		private $_cache;
 
 		/**
 		 * This function generates the page content from en environment object.
@@ -24,27 +23,32 @@
 		 *
 		 * \param env The environment variable
 		 */
-		public function __construct($env) {
+		public function __construct($env, $cache) {
 
 			/* Initialize some of the variables */
 			$this->_cssHeader = array();
 			$this->_jsHeader = array();
 			$this->_header = array();
-			$this->_jsInline = "";
 			$this->_data = array();
 			$this->_pathHistory = array();
 
 			/* Save the environement object */
 			$this->_env = $env; 
 
+			/* Save the cache object */
+			$this->_cache = $cache;
+
 			/* Look for the page, the first one from the current directory */
 			if (!($page = $this->_fetchIndex())) {
-				return EXCEPTION_CODE;
+				return false;
 			}
 
 			/* Update the environment path */
 			$env->add("fullpath", "index", dirname($page).DIRECTORY_SEPARATOR);
 			$env->add("url", "index", IrcmsPath::concat($env->get("url", "root"), substr(dirname($page), strlen($env->get("fullpath", "root")))."/"));
+
+			/* Add the index to the cache */
+			$this->_cache->addDependency($page);
 
 			/* Save the page location */
 			$this->_page = $page;
@@ -54,7 +58,7 @@
 		 * Add a CSS header
 		 */
 		public function cssHeader($file) {
-			$backtrace = debug_backtrace();
+			/* Try to convert it into a valid path */
 			$path = $this->_env->toPath($file, array(
 				$this->_getCurrentPath(),
 				$this->_env->get("fullpath", "index")
@@ -66,7 +70,6 @@
 		 * Add a JavaScript header
 		 */
 		public function jsHeader($file) {
-			$backtrace = debug_backtrace();
 			/* Try to convert it into a valid path */
 			$path = $this->_env->toPath($file, array(
 				$this->_getCurrentPath(),
@@ -83,10 +86,26 @@
 		}
 
 		/**
-		 * Add inline JavaScript
+		 * Return the cache instance, this can be usefull if it needs to be passed to another module
+		 * for example.
 		 */
-		public function jsInline($str) {
-			$this->_jsInline .= $str."\n";
+		public function cache() {
+			return $this->_cache;
+		}
+
+		/**
+		 * Add a dependency file to the cache.
+		 * \param exists Tells if the files exists or not. If it exists, the cache
+		 * will be invalidated if the file not present. Otherwise, if it does not exists,
+		 * the cache will be invalidated if present.
+		 */
+		public function cacheDependency($file, $exists = true) {
+			/* Try to convert it into a valid path */
+			$path = $this->_env->toPath($file, array(
+				$this->_getCurrentPath(),
+				$this->_env->get("fullpath", "index")
+			));
+			$this->_cache->addDependency($path, $exists);
 		}
 
 		/**
@@ -117,11 +136,6 @@
 				/* Insert it at the end of the <head/> tag */
 				$content = preg_replace("_</\s*head\s*>_si", "\n<".IRCMS_HEADER_TAG."/>\n</head>", $content, 1);
 			}
-			/* Make sure the IRCMS_BODY_TAG tag is present, otherwise, set it */
-			if (strpos($content, "<".IRCMS_BODY_TAG."/>") === false) {
-				/* Insert it at the very end of the <body/> tag */
-				$content = strrev(preg_replace("_>\s*ydob\s*/<_si", ">ydob/<\n".strrev("<".IRCMS_BODY_TAG."/>")."\n", strrev($content), 1));
-			}
 
 			/* Add the javascript headers */
 			$path_list = (IRCMS_DEBUG) ? $this->_jsHeader : $this->_jsHeader; //ircms_compress_js($env, $this->_jsHeader);
@@ -141,10 +155,7 @@
 				IRCMS_HEADER_TAG => implode("\n", array_unique($this->_header))
 			));
 
-			/* Write inline JavaScript */
-			$content = $this->_replaceTags($content, array("IRCMSJAVASCRIPT" => ($this->_jsInline) ? "<script type=\"text/javascript\"><!--\n".$this->_jsInline."\n//--></script>" : ""));
-
-			/* Save the page content */
+			/* Return the page content */
 			return $content;
 		}
 

@@ -5,7 +5,7 @@
 
 	/* Check if the config file exists, if not create it from the example */
 	if (!file_exists(".ircms/conf.php")) {
-		ircmsc_file_copy(".ircms/conf.php.example", ".ircms/conf.php");
+		copy(".ircms/conf.php.example", ".ircms/conf.php");
 	}
 	require_once(".ircms/conf.php");
 
@@ -17,4 +17,5 @@
 	require_once(".ircms/core/ircms.php");
 	require_once(".ircms/core/content.php");
 	require_once(".ircms/core/page.php");
+	require_once(".ircms/core/cache.php");
 ?>

@@ -27,12 +27,36 @@
 	class IrcmsContent {
 
 		private $_env;
+		private $_cache;
 
 		/**
-		 * Associate a content object with an environement variable
+		 * Associate a content object with an environement variable.
+		 * \param cache Optionally associate a cache instance to the content, this will update the
+		 * file dependencies
 		 */
-		public function __construct($env) {
+		public function __construct($env, $cache = null) {
 			$this->_env = $env;
+			$this->_cache = $cache;
+		}
+
+		/**
+		 * Update the cache dependencies
+		 */
+		private function _updateCacheDeps() {
+			/* Get the bottom and top path */
+			$current = realpath($this->_env->get("fullpath", "current"));
+			$top_length = strlen(realpath($this->_env->get("fullpath", "data")));
+			$deps = array();
+
+			/* Loop until the current path become a parent of the top path */
+			while (strlen($current) >= $top_length) {
+				$file = IrcmsPath::concat($current, IRCMS_CONTENT);
+				$this->_cache->addDependency($file, file_exists($file));
+				/* Update the current path */
+				$current = dirname($current);
+			}
+
+			return $deps;
 		}
 
 		/**
@@ -41,6 +65,12 @@
 		 * \return The content
 		 */
 		public function read() {
+
+			/* Update the file dependencies of the cache */
+			if ($this->_cache) {
+				$this->_updateCacheDeps();
+			}
+
 			/* Get the content file list */
 			$file_list = IrcmsPath::findMulti($this->_env->get("fullpath", "current"), $this->_env->get("fullpath", "data"), IRCMS_CONTENT);
 

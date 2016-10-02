@@ -6,7 +6,7 @@
 	/* Disable sessions Transfer SID */
 	ini_set("url_rewriter.tags", "");
 	session_set_cookie_params(0);
-	session_cache_limiter('private_no_expire, must-revalidate');
+	session_cache_limiter("private_no_expire, must-revalidate");
 	session_cache_expire(30);
 	if (!session_start()) {
 		echo "Session error, cannot initialize.";
@@ -39,7 +39,7 @@
 
 	/* Set default configuration */
 	define('IRCMS_DEBUG', (defined('IRCMS_CONF_DEBUG')) ? IRCMS_CONF_DEBUG : false);
-	define('IRCMS_CACHE', (defined('IRCMS_CONF_CACHE')) ? IRCMS_CONF_CACHE : false);
+	define('IRCMS_CACHE', (defined('IRCMS_CONF_CACHE')) ? IRCMS_ROOT.IRCMS_CONF_CACHE : false);
 	define('IRCMS_ACCESS', (defined('IRCMS_CONF_ACCESS')) ? IRCMS_CONF_ACCESS : true);
 	define('IRCMS_DATA', realpath(IRCMS_ROOT.DIRECTORY_SEPARATOR.((defined('IRCMS_CONF_DATA')) ? IRCMS_CONF_DATA : './')).DIRECTORY_SEPARATOR);
 	define('IRCMS_ADMIN', realpath(IRCMS_ROOT.DIRECTORY_SEPARATOR.((defined('IRCMS_CONF_ADMIN')) ? IRCMS_CONF_ADMIN : '.ircms/page/admin')).DIRECTORY_SEPARATOR);
@@ -54,6 +54,7 @@
 		/* The environement context */
 		private $_env;
 		private $_page;
+		private $_cache;
 
 		/**
 		 * Initializes the framework
@@ -71,15 +72,26 @@
 				die();
 			}
 
+			/* Create the page cache */
+			$this->_cache = new IrcmsCache(
+					/* Cache configuration */
+					array(
+						"path" => $this->_env->get("fullpath", "cache"),
+						"enable" => ($this->_env->get("fullpath", "cache")) ? true : false
+					),
+					/* File path */
+					IrcmsPath::concat($this->_env->get("path"), $this->_env->id())
+			);
+
 			/* Initialize the page associated to it */
-			$this->_page = new IrcmsPage($this->_env);
+			$this->_page = new IrcmsPage($this->_env, $this->_cache);
 		}
 
 		/**
 		 * This function loads the data associated to the environment
 		 */
 		public function load() {
-			$content = new IrcmsContent($this->_env);
+			$content = new IrcmsContent($this->_env, $this->_cache);
 			return $content->read();
 		}
 
@@ -87,8 +99,18 @@
 		 * Generate the page
 		 */
 		public function generate() {
+			/* Look if the page is in the cache, valid and returns it */
+			if ($this->_cache->isValid()) {
+				/* Add a message if debug is on, to tell from which cache it is taken from */
+				return $this->_cache->get().((IRCMS_DEBUG) ? "<!-- Cache ID ".$this->_cache->getId()." //-->\n" : "");
+			}
+			/* If not generate the content */
 			$data = $this->load();
-			return $this->_page->generate($data);
+			$content = $this->_page->generate($data);
+			/* And save it to the cache for later use */
+			$this->_cache->set($content);
+			/* Return the file content */
+			return $content;
 		}
 
 		/**

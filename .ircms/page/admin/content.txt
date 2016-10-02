@@ -1,6 +1,9 @@
 ---ircms-content---
 
 <?php
+	/* Do not cache any of the admin area files */
+	$this->cache()->disable();
+
 	/* Load dependencies */
 	$this->jsHeader("deps/script.js");
 	$this->cssHeader("deps/style.css");

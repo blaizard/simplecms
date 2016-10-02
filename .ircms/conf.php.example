@@ -4,7 +4,7 @@
 	 */
 
 	/**
-	 * Debug mode, increase the verbosity and disable cache and other optimzation.
+	 * Debug mode, increase the verbosity and disable page optimization.
 	 */
 	define('IRCMS_CONF_DEBUG', true);
 
@@ -14,6 +14,11 @@
 	 * The path is relative to the root directory of IRCMS.
 	 */
 	define('IRCMS_CONF_CACHE', '.cache/');
+
+	/**
+	 * Cache validy in second, after this time, the garbage collector will delete the entry.
+	 */
+	define('IRCMS_CONF_CACHE_TIME', 3600 * 24);
 
 	/**
 	 * Enable the access privileges

@@ -13,8 +13,6 @@
 		private $_cssHeader;
 		private $_jsHeader;
 		private $_header;
-		private $_data;
-		private $_pathHistory;
 		private $_cache;
 
 		/**
@@ -29,8 +27,6 @@
 			$this->_cssHeader = array();
 			$this->_jsHeader = array();
 			$this->_header = array();
-			$this->_data = array();
-			$this->_pathHistory = array();
 
 			/* Save the environement object */
 			$this->_env = $env; 
@@ -39,7 +35,7 @@
 			$this->_cache = $cache;
 
 			/* Look for the page, the first one from the current directory */
-			if (!($page = $this->_fetchIndex())) {
+			if (!($page = $this->fetchIndex())) {
 				return false;
 			}
 
@@ -47,42 +43,15 @@
 			$env->add("fullpath", "index", dirname($page).DIRECTORY_SEPARATOR);
 			$env->add("url", "index", IrcmsPath::concat($env->get("url", "root"), substr(dirname($page), strlen($env->get("fullpath", "root")))."/"));
 
-			/* Add the index to the cache */
-			$this->_cache->addDependency($page);
-
 			/* Save the page location */
 			$this->_page = $page;
 		}
 
 		/**
-		 * Add a CSS header
+		 * Retrieve the environement variable associated with the page
 		 */
-		public function cssHeader($file) {
-			/* Try to convert it into a valid path */
-			$path = $this->_env->toPath($file, array(
-				$this->_getCurrentPath(),
-				$this->_env->get("fullpath", "index")
-			));
-			array_push($this->_cssHeader, ($path === false) ? $file : $path);
-		}
-
-		/**
-		 * Add a JavaScript header
-		 */
-		public function jsHeader($file) {
-			/* Try to convert it into a valid path */
-			$path = $this->_env->toPath($file, array(
-				$this->_getCurrentPath(),
-				$this->_env->get("fullpath", "index")
-			));
-			array_push($this->_jsHeader, ($path === false) ? $file : $path);
-		}
-
-		/**
-		 * Add a custom header
-		 */
-		public function header($item) {
-			array_push($this->_header, $item);
+		public function env() {
+			return $this->_env;
 		}
 
 		/**
@@ -94,18 +63,24 @@
 		}
 
 		/**
-		 * Add a dependency file to the cache.
-		 * \param exists Tells if the files exists or not. If it exists, the cache
-		 * will be invalidated if the file not present. Otherwise, if it does not exists,
-		 * the cache will be invalidated if present.
+		 * Add a CSS file path to the list
 		 */
-		public function cacheDependency($file, $exists = true) {
-			/* Try to convert it into a valid path */
-			$path = $this->_env->toPath($file, array(
-				$this->_getCurrentPath(),
-				$this->_env->get("fullpath", "index")
-			));
-			$this->_cache->addDependency($path, $exists);
+		public function addCssHeader($path) {
+			array_push($this->_cssHeader, $path);
+		}
+
+		/**
+		 * Add a Javascript file path to the list
+		 */
+		public function addJsHeader($path) {
+			array_push($this->_jsHeader, $path);
+		}
+
+		/**
+		 * Add an HTML header to the list
+		 */
+		public function addHeader($str) {
+			array_push($this->_header, $str);
 		}
 
 		/**
@@ -115,17 +90,18 @@
 
 			/* Reset the path history */
 			$this->_pathHistory = array($this->_page);
+			$this->_pathHistoryTemplate = array($this->_page);
 
-			/* Set the data */
-			$this->_data = $data;
+			// Create the content interface for the page
+			$pageContent = new IrcmsPageContent($this, $data);
 
 			/* Add custom headers */
-			$this->_generateCustomHeaders();
+			$this->generateCustomHeaders();
 
 			/* Postpone the standard output */
 			ob_start();
 			/* Process the page */
-			include_once($this->_page);
+			$pageContent->fileInclude($this->_page);
 			/* Set the output into "$ob_output" */
 			$content = ob_get_contents();
 			ob_end_clean();
@@ -141,17 +117,17 @@
 			$path_list = (IRCMS_DEBUG) ? $this->_jsHeader : $this->_jsHeader; //ircms_compress_js($env, $this->_jsHeader);
 			$path_list = array_unique($path_list);
 			foreach ($path_list as $path) {
-				$this->header("<script type=\"text/javascript\" src=\"".$this->_env->toUrl($path)."\"></script>");
+				$this->addHeader("<script type=\"text/javascript\" src=\"".$this->_env->toUrl($path)."\"></script>");
 			}
 			/* Add the CSS headers - NOTE: CSS cannot be minified, as CSS url is relative the CSS stylesheet */
 			$path_list = (IRCMS_DEBUG) ? $this->_cssHeader : $this->_cssHeader; //ircms_compress_css($env, $this->_cssHeader);
 			$path_list = array_unique($path_list);
 			foreach ($path_list as $path) {
-				$this->header("<link rel=\"stylesheet\" type=\"text/css\" href=\"".$this->_env->toUrl($path)."\"/>");
+				$this->addHeader("<link rel=\"stylesheet\" type=\"text/css\" href=\"".$this->_env->toUrl($path)."\"/>");
 			}
 
 			/* Write headers */
-			$content = $this->_replaceTags($content, array(
+			$content = $this->replaceTags($content, array(
 				IRCMS_HEADER_TAG => implode("\n", array_unique($this->_header))
 			));
 
@@ -160,94 +136,53 @@
 		}
 
 		/**
-		 * Return environement variables
-		 */
-		public function env($key1 = null, $key2 = null) {
-			return $this->_env->get($key1, $key2);
-		}
-
-		/**
-		 * Return the data identified by the name
-		 */
-		public function data($name) {
-			if (isset($this->_data[$name])) {
-				return $this->_data[$name]["value"];
-			}
-			return "";
-		}
-
-		/**
-		 * Return the arguments of the data identified by the name
-		 */
-		public function dataArgs($name) {
-			if (isset($this->_data[$name])) {
-				return json_decode($this->_data[$name]["args"]);
-			}
-			return array();
-		}
-
-		/**
-		 * Return the path of the data identified by the name
-		 */
-		public function dataPath($name) {
-			if (isset($this->_data[$name])) {
-				return $this->_data[$name]["path"];
-			}
-			return null;
-		}
-
-		/**
-		 * Return the raw data
-		 */
-		public function dataRaw() {
-			return $this->_data;
-		}
-
-		/**
-		 * \brief Same as \ref data, but evaluates the content of the variable.
-		 * This function must be used with care as it can be a backdoor for hackers.
-		 * So, make sure you understand the risks before using this.
-		 *
-		 * \param name The name of the data.
-		 *
-		 * \return The data value.
-		 */
-		public function dataInclude($name) {
-			$data = $this->data($name);
-			/* Update the path history */
-			array_push($this->_pathHistory, $this->dataPath($name));
-			/* Process the data */
-			$data = eval("?".">$data");
-			/* Remove the path from the history */
-			array_pop($this->_pathHistory);
-			return $data;
-		}
-
-		/**
-		 * \brief Include a file located from the path passed in argument.
-		 */
-		public function fileInclude($path) {
-			/* Update the path history */
-			array_push($this->_pathHistory, $path);
-			/* Include the file */
-			include($path);
-			/* Remove the path from the history */
-			array_pop($this->_pathHistory);
-		}
-
-		/**
 		 * Return the current path
 		 */
-		private function _getCurrentPath() {
-			return dirname(end($this->_pathHistory));
+		public function getCurrentPath() {
+			return dirname(end($this->_pathHistory)).DIRECTORY_SEPARATOR;
 		}
 
+		/**
+		 * Return the current path from the template dir (if any)
+		 */
+		public function getCurrentPathTemplate() {
+			return dirname(end($this->_pathHistoryTemplate)).DIRECTORY_SEPARATOR;
+		}
+
+		/**
+		 * Push a new current path to the list
+		 */
+		public function pushCurrentPath($path) {
+			array_push($this->_pathHistory, $path);
+		}
+
+		/**
+		 * Remove the latest added current path from the list
+		 */
+		public function popCurrentPath() {
+			return array_pop($this->_pathHistory);
+		}
+
+		/**
+		 * Push a new current path to the list
+		 */
+		public function pushCurrentPathTemplate($path) {
+			array_push($this->_pathHistoryTemplate, $path);
+		}
+
+		/**
+		 * Remove the latest added current path from the list
+		 */
+		public function popCurrentPathTemplate() {
+			return array_pop($this->_pathHistoryTemplate);
+		}
 
 		/**
 		 * Generate custom headers
 		 */
-		private function _generateCustomHeaders() {
-			/* Todo */
+		private function generateCustomHeaders() {
+			// Add the base header
+			$this->addHeader("<base href=\"".$this->env()->get("url", "current")."\"/>");
 		}
 
 		/**
@@ -274,7 +209,7 @@
 		 *
 		 * \return The new string.
 		 */
-		private function _replaceTags($str, $tag_list, $required = false) {
+		private function replaceTags($str, $tag_list, $required = false) {
 			foreach ($tag_list as $tag => $value) {
 				$count = 0;
 				/* Look for existing tags */
@@ -302,7 +237,7 @@
 		/**
 		 * This function fetch the index used by the page
 		 */
-		private function _fetchIndex() {
+		private function fetchIndex() {
 			/* Look for the page, the first one from the current directory */
 			$path = IrcmsPath::find($this->_env->get('fullpath', 'current'), $this->_env->get('fullpath', 'data'), IRCMS_INDEX);
 			/* Returns an error if nothing is found */
@@ -314,7 +249,7 @@
 				throw new Exception("Cannot find the template `".IRCMS_INDEX."' in `".$this->_env->get('fullpath', 'current')."'");
 			}
 
-			return $path.IRCMS_INDEX;
+			return $path;
 		}
 	}
 ?>

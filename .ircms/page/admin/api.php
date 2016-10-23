@@ -4,8 +4,8 @@
 		die();
 	}*/
 
-	require_once(".ircms/deps/ircom.php");
-	require_once(".ircms/deps/irexplorer.php");
+	require_once(".ircms/deps/ircom/ircom.php");
+	require_once(".ircms/deps/irexplorer/irexplorer.php");
 
 	/* Make sure the required query strings are present */
 	if (!isset($_GET["type"])) {

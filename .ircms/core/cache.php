@@ -12,67 +12,90 @@
 	 */
 	class IrcmsCache {
 
-		private $_id;
-		private $_path;
-		private $_deps;
-		private $_options;
-		private $_config;
+		private $m_id;
+		private $m_path;
+		private $m_deps;
+		private $m_options;
+		private $m_config;
+		private static $m_default = array(
+			/**
+			 * The root path of the cache directory
+			 */
+			"path" => "/.cache",
+			/**
+			 * The container assigned for this cache set
+			 */
+			"container" => "default",
+			/**
+			 * The cache default configuration file name
+			 */
+			"config" => ".cache",
+			/**
+			 * The time in seconds after which an item from the cache is declared invalid.
+			 * If set to 0 or null, it will be ignored
+			 */
+			"invalid_time" => 86400,
+			/**
+			 * This will run the clean function after every interval
+			 */
+			"clean_interval" => 600,
+			/**
+			 * The maximum number of files to check for garbage collection at a time. If set to 0,
+			 * it will loop through everything.
+			 */
+			"clean_chunk" => 10,
+			/**
+			 * To enable or disable the cache
+			 */
+			"enable" => true
+		);
 
-		public function __construct($options, $file = null) {
+		public function __construct($file, $options = array()) {
 
-			$this->_options = array_merge(array(
-				/**
-				 * The root path of the cache directory
-				 */
-				"path" => dirname(__FILE__)."/.cache",
-				/**
-				 * The cache default configuration file name
-				 */
-				"config" => ".cache.part",
-				/**
-				 * The time in seconds after which an item from the cache is declared invalid.
-				 * If set to 0 or null, it will be ignored
-				 */
-				"invalid_time" => 3600 * 24,
-				/**
-				 * This will run the clean function after every interval
-				 */
-				"clean_interval" => 3600,
-				/**
-				 * The maximum number of files to check for garbage collection at a time. If set to 0,
-				 * it will loop through everything.
-				 */
-				"clean_chunk" => 10,
-				/**
-				 * To enable or disable the cache
-				 */
-				"enable" => true
-			), $options);
+			$this->m_options = array_merge(IrcmsCache::$m_default, $options);
 
 			/* List of file dependecies for this cache, i.e if one of these files is altered, the cache should be invalidated */
-			$this->_deps = array();
+			$this->m_deps = array();
 
 			/* Make sure the cache directory exists */
-			if (!file_exists($this->_options["path"])) {
-				mkdir($this->_options["path"]);
+			if (!file_exists($this->m_options["path"])) {
+				mkdir($this->m_options["path"]);
 			}
 			/* Cleanup the path */
-			$this->_options["path"] = realpath($this->_options["path"]);
+			$this->m_options["path"] = realpath($this->m_options["path"]);
 
 			/* Store the cache id */
-			$this->_id = $file;
-			if ($file) {
-				/* Generate the full path of the file id if relevant */
-				$this->_path = $this->_options["path"].DIRECTORY_SEPARATOR.ltrim($this->_id, DIRECTORY_SEPARATOR);
-			}
+			$this->m_id = $file;
+
+			/* Generate the full path of the file id if relevant */
+			$this->m_path = $this->m_options["path"].DIRECTORY_SEPARATOR.$this->m_options["container"].DIRECTORY_SEPARATOR.ltrim($this->m_id, DIRECTORY_SEPARATOR);
 
 			/* Build the config file full path */
-			$this->_config = $this->_options["path"].DIRECTORY_SEPARATOR.ltrim($this->_options["config"], DIRECTORY_SEPARATOR);
+			$this->m_config = $this->m_options["path"].DIRECTORY_SEPARATOR.ltrim($this->m_options["config"], DIRECTORY_SEPARATOR);
 
 			/* Clean the cache if needed */
-			if (!file_exists($this->_config) || time() - filemtime($this->_config) > $this->_options["clean_interval"]) {
-				$this->clean($this->_options["clean_chunk"]);
+			if (!file_exists($this->m_config) || time() - filemtime($this->m_config) > $this->m_options["clean_interval"]) {
+				$this->clean($this->m_options["clean_chunk"]);
 			}
+
+			// HACK
+		//	$this->m_options["enable"] = false;
+		}
+
+		/**
+		 * Set the default cache configuration
+		 */
+		public static function setDefault($options) {
+			IrcmsCache::$m_default = array_merge(IrcmsCache::$m_default, $options);
+		}
+
+		/**
+		 * Create a cache container. Each container contains a set of cached files
+		 * for a specific use. A container is simply a way to partition different
+		 * use fo the cache.
+		 */
+		public function getContainer() {
+			return $this->m_options["container"];
 		}
 
 		/**
@@ -82,10 +105,10 @@
 		public function clean($chunk = -1) {
 
 			/* Open and lock the file, to ensure that only 1 instance is running at a time */
-			$fp = @fopen($this->_config, "r+");
+			$fp = @fopen($this->m_config, "r+");
 			/* If the file does not exists, create it */
 			if (!$fp) {
-				$fp = fopen($this->_config, "w");
+				$fp = fopen($this->m_config, "w");
 			}
 			/* Lock the file, if the file is already locked just return */
 			if (!flock($fp, LOCK_EX | LOCK_NB)) {
@@ -93,14 +116,16 @@
 			}
 			/* Read and decode the content */
 			$config = array();
-			$filesize = filesize($this->_config);
+			$filesize = filesize($this->m_config);
 			if ($chunk > 0 && $filesize && (($content = fread($fp, $filesize)) !== false)) {
 				$config = json_decode($content, true);
 				$config = (!is_array($config)) ? array() : $config;
 			}
 
 			$config = array_merge(array(
-				"path" => null
+				"path" => null,
+				"_size" => 0,
+				"_nb" => 0
 			), $config);
 
 			/* Collect the garbage */
@@ -127,8 +152,8 @@
 			/* Initialize the current path
 			 * Separate the directory name from the filename and make sure they are valid, if not find the top one
 			 */
-			$top_length = strlen($this->_options["path"]);
-			$dirpath = $this->_options["path"].DIRECTORY_SEPARATOR.$config["path"];
+			$top_length = strlen($this->m_options["path"]);
+			$dirpath = $this->m_options["path"].DIRECTORY_SEPARATOR.$config["path"];
 			$filename = (file_exists($dirpath) && is_file($dirpath)) ? basename($dirpath) : null;
 
 			/* If it does not exists, go to the top directory */
@@ -149,15 +174,18 @@
 				echo "<!-- Cache variables (dirpath:".$dirpath.";filename:".$filename." //-->\n";
 			}
 
+			/* Statistis */
+			$stats = array();
+
 			/* Go through the files first */
-			$output = $this->_garbageCollectRecursive($chunk, $dirpath, $filename);
+			$output = $this->_garbageCollectRecursive($chunk, $stats, $dirpath, $filename);
 
 			/* If this was not the top directory, loop through the upper ones */
 			while (!$output && strlen($dirpath) > $top_length) {
 				$filename = basename($dirpath);
 				$dirpath = dirname($dirpath);
 				/* Loop through the rest */
-				$output = $this->_garbageCollectRecursive($chunk, $dirpath, $filename);
+				$output = $this->_garbageCollectRecursive($chunk, $stats, $dirpath, $filename);
 			}
 
 			/* Update the cache configuration file.
@@ -169,14 +197,28 @@
 				echo "<!-- Cache ends at `".$config["path"]."' //-->\n";
 			}
 
+			/* Update the statistical records */
+			$config["_nb"] += count($stats);
+			foreach ($stats as $file) {
+				$config["_size"] += filesize($file);
+			}
+			/* This means the loop is completed, all files have been discovered */
+			if ($config["path"] === null) {
+				$config["nb"] = $config["_nb"];
+				$config["size"] = $config["_size"];
+				$config["_nb"] = $config["_size"] = 0;
+			}
+
 			return $config;
 		}
 
 		/**
 		 * Recursive function that will go through the directories and files and check their validity
 		 * \param nb_files The number of files to process
+		 * \param stats The of files that have been discovered and that kept into the cache.
+		 * This list can be used later for statiscical analysis.
 		 */
-		private function _garbageCollectRecursive(&$nb_files, $dirname, $start_filename = null) {
+		private function _garbageCollectRecursive(&$nb_files, &$stats, $dirname, $start_filename = null) {
 			/* Open the directory */
 			$dir = @opendir($dirname);
 			/* Make sure the directory has been propertly opened */
@@ -187,7 +229,7 @@
 			/* Loop through the files */
 			$start = ($start_filename) ? false : true;
 			while (($file = readdir($dir)) != false) {
-				if ($file != "." && $file != ".." && $file != $this->_options["config"]) {
+				if ($file != "." && $file != ".." && $file != $this->m_options["config"]) {
 					if (!$start && $start_filename == $file) {
 						$start = true;
 					}
@@ -200,7 +242,7 @@
 						/* If this is a directory, jumps into it and re-iterate */
 						if (is_dir($path)) {
 							$start_nb_files = $nb_files;
-							$output = $this->_garbageCollectRecursive($nb_files, $path);
+							$output = $this->_garbageCollectRecursive($nb_files, $stats, $path);
 							/* If the output is set, it means that the file discovery is not complete */
 							if ($output) {
 								closedir($dir);
@@ -215,7 +257,7 @@
 							/* Decrease the file counter only for files */
 							$nb_files--;
 							/* If file is too old, delete it */
-							if ($this->_options["invalid_time"] && (time() - filemtime($path) > $this->_options["invalid_time"])) {
+							if ($this->m_options["invalid_time"] && (time() - filemtime($path) > $this->m_options["invalid_time"])) {
 								/* Deletes this entry */
 								unlink($path);
 							}
@@ -224,6 +266,8 @@
 							 */
 							else {
 								$start_filename = $file;
+								/* Add this file to the list */
+								array_push($stats, $path);
 							}
 							/* If the loop has been through enough files, returns */
 							if ($nb_files == 0) {
@@ -244,7 +288,21 @@
 		 * Disable the cache
 		 */
 		public function disable() {
-			$this->_options["enable"] = false;
+			$this->m_options["enable"] = false;
+		}
+
+		private static function _addDependency(&$deps, $path, $exists = true) {
+			/* Check if the element already exists */
+			foreach ($deps as $dep) {
+				if ($dep[0] == $path) {
+					if ($dep[1] != $exists) {
+						throw new Exception("The same dependency `".$path."' is added twice with conflicting options.");
+					}
+					return;
+				}
+			}
+			/* If not add it */
+			array_push($deps, array($path, $exists));
 		}
 
 		/**
@@ -253,11 +311,7 @@
 		 * it will invalid the cache if the file exist.
 		 */
 		public function addDependency($path, $exists = true) {
-			$elt = array($path, $exists);
-			/* Check if the element already exists */
-			if (!in_array($elt, $this->_deps)) {
-				array_push($this->_deps, $elt);
-			}
+			IrcmsCache::_addDependency($this->m_deps, $path, $exists);
 		}
 
 		/**
@@ -265,45 +319,45 @@
 		 * Cahe format uses the first line to store the file dependencies and he rest for the data
 		 */
 		public function set($data) {
-			if (!$this->_id) {
+			if (!$this->m_id) {
 				throw new Exception("This cache is not linked to a file, please check the configuration.");
 			}
 			/* Bypass if the cache is not enabled */
-			if (!$this->_options["enable"]) {
+			if (!$this->m_options["enable"]) {
 				return;
 			}
 			/* Create the path if it does not exists already */
-			@mkdir(dirname($this->_path), 0777, true);
+			@mkdir(dirname($this->m_path), 0777, true);
 			/* Update the content */
-			$content = json_encode($this->_deps)."\n".$data;
+			$content = json_encode($this->m_deps)."\n".$data;
 			/* Create the asset */
-			file_put_contents($this->_path, $content);
+			file_put_contents($this->m_path, $content);
 		}
 
 		/**
 		 * Return the cache ID
 		 */
 		public function getId() {
-			if (!$this->_id) {
+			if (!$this->m_id) {
 				throw new Exception("This cache is not linked to a file, please check the configuration.");
 			}
-			return $this->_id;
+			return $this->m_id;
 		}
 
 		/**
 		 * Retrieve the cache
 		 */
 		public function get() {
-			if (!$this->_id) {
+			if (!$this->m_id) {
 				throw new Exception("This cache is not linked to a file, please check the configuration.");
 			}
 			/* Touch the file only if the cache is enabled */
-			if ($this->_options["enable"]) {
+			if ($this->m_options["enable"]) {
 				/* Touch the file to update its timestamp */
-				touch($this->_path);
+				touch($this->m_path);
 			}
 			/* Read the content of the file */
-			$content = file_get_contents($this->_path);
+			$content = file_get_contents($this->m_path);
 			/* Discard the first line (which contains the dependencies) */
 			return substr($content, strpos($content, "\n") + 1);
 		}
@@ -312,57 +366,85 @@
 		 * Return the last modification time of the cache
 		 */
 		public function timestamp() {
-			if (!$this->_id) {
+			if (!$this->m_id) {
 				throw new Exception("This cache is not linked to a file, please check the configuration.");
 			}
-			return filemtime($this->_path);
+			return filemtime($this->m_path);
 		}
 
 		/**
 		 * Returns true of false if the cache exists
 		 */
 		public function isCached() {
-			if (!$this->_id) {
+			if (!$this->m_id) {
 				throw new Exception("This cache is not linked to a file, please check the configuration.");
 			}
-			return file_exists($this->_path);
+			return file_exists($this->m_path);
 		}
 
 		/**
 		 * Check wether a cache entry is valid or not
 		 */
 		public function isValid() {
-			if (!$this->_id) {
+			if (!$this->m_id) {
 				throw new Exception("This cache is not linked to a file, please check the configuration.");
 			}
 			/* Bypass if the cache is not enabled */
-			if (!$this->_options["enable"]) {
+			if (!$this->m_options["enable"]) {
+				if (IRCMS_CACHE_DEBUG) {
+					echo "<!-- Cache entry `".$this->m_id."' is invalid because the cache is disabled. //-->";
+				}
 				return false;
 			}
 			/* If the entry does not exists */
 			if (!$this->isCached()) {
+				if (IRCMS_CACHE_DEBUG) {
+					echo "<!-- Cache entry `".$this->m_id."' is invalid because the entry is not in the cache. //-->";
+				}
 				return false;
 			}
 			/* Get the file dependency list */
-			$file = fopen($this->_path, "r");
+			$file = fopen($this->m_path, "r");
 			$deps_list = json_decode(fgets($file));
 			fclose($file);
+			/* If the dependency list is altered, raise an error */
+			if (!is_array($deps_list)) {
+				if (IRCMS_CACHE_DEBUG) {
+					echo "<!-- Cache entry `".$this->m_id."' is corrupted. //-->";
+				}
+				return false;
+			}
 			/* Merge the dependencies with the current ones */
-			foreach ($deps_list as $elt) {
-				$this->addDependency($elt[0], $elt[1]);
+			foreach ($this->m_deps as $elt) {
+				IrcmsCache::_addDependency($deps_list, $elt[0], $elt[1]);
 			}
 			/* Caclulate the timestamp of the cache */
 			$cache_time = $this->timestamp();
 			/* Calculate the max dependency timestamp */
-			foreach ($this->_deps as $elt) {
+			foreach ($deps_list as $elt) {
 				$file = $elt[0];
 				$exists = $elt[1];
 				/* If the file does not exists but it should */
-				if ($exists && !file_exists($file)) return false;
+				if ($exists && !file_exists($file)) {
+					if (IRCMS_CACHE_DEBUG) {
+						echo "<!-- Cache entry `".$this->m_id."' is invalid because the dependency `".$file."' does not exists. //-->";
+					}
+					return false;
+				}
 				/* If the file exists but it should not */
-				if (!$exists && file_exists($file)) return false;
+				if (!$exists && file_exists($file)) {
+					if (IRCMS_CACHE_DEBUG) {
+						echo "<!-- Cache entry `".$this->m_id."' is invalid because the dependency `".$file."' exists. //-->";
+					}
+					return false;
+				}
 				/* If the file is newer than the cache */
-				if ($exists && filemtime($file) > $cache_time) return false;
+				if ($exists && filemtime($file) > $cache_time) {
+					if (IRCMS_CACHE_DEBUG) {
+						echo "<!-- Cache entry `".$this->m_id."' is invalid because the dependency `".$file."' is newer than the cache. //-->";
+					}
+					return false;
+				}
 			}
 			return true;
 		}

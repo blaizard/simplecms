@@ -1,14 +1,23 @@
 ---ircms-subcontent---
 
 <?php
-	$this->jsHeader("/.ircms/deps/irform.min.js");
+	$this->jsHeader("/.ircms/deps/irform/irform.min.js");
 	$this->jsHeader("/.ircms/page/deps/tinymce/js/tinymce/tinymce.min.js");
 	$this->jsHeader("script.js");
+
+	$this->cssHeader("/.ircms/deps/irform/irform.min.css");
 
 	/* Load the current adminPath environement */
 	$adminEnv = new IrcmsEnv($_SESSION['admin_path']);
 	/* Get the content linked it with the current cache to be invalidated if the content change */
-	$adminContent = new IrcmsContent($adminEnv, $this->cache());
+	$adminContent = new IrcmsContent($adminEnv);
+	$data = $adminContent->read();
+	$pageContent = new IrcmsPageContent($this->page(), $data);
+
+	// Read and execute the admin script if any
+	if ($pageContent->data("admin")) {
+		$pageContent->dataInclude("admin");
+	}
 
 	$breadcrumb = IrcmsPath::breadcrumb($_SESSION['admin_path']);
 ?>
@@ -19,7 +28,6 @@
 <form class="form-horizontal">
 	<div class="form-group">
 		<div class="col-sm-10 col-sm-offset-2" style="text-align: right;">
-			<button type="button" class="btn btn-warning" onclick="javascript:clearContent();">Clear</button>
 			<button type="button" class="btn btn-default">Preview</button>
 			<button type="button" class="btn btn-danger" onclick="javascript:submitContent();">Submit</button>
 		</div>
@@ -79,32 +87,29 @@
 
 <script type="text/javascript">
 <!--
-	/* Override default options */
-	$().irformTinymce.defaults.callbackBrowser = function(type, callback) {
-		new IrexplorerDialog({
-			relative: true,
-			onValidate: function(path) {
-				callback(path);
-			}
-		});
-	};
 	$().irformTinymce.defaults.baseURL = "<?php echo $this->env("url", "root").$_SESSION['admin_path']; ?>";
 
-	/* Original description of the form fields */
-	var mainFormDescription = {
 	<?php
-		$data = $adminContent->read();
 		$mainFormDescription = array();
 		$values = array();
-		foreach ($data as $key => $value) {
-			if ($value["inherit"]) {
-				$value["args"] = substr($value["args"], 0, -1).",\"disabled\":true,\"ignore\":true}";
-			}
-			echo $key.":".$value["args"].",\n";
-			$values[$key] = $value["value"];
+		$itemList = array();
+		foreach ($pageContent->dataNames() as $name) {
+			$value = $pageContent->data($name, true);
+			$args = $pageContent->dataArgs($name, true);
+			$isInherited = $pageContent->dataIsInherited($name);
+
+			$item = array_merge(array(
+				"name" => $name,
+				"disabled" => ($isInherited) ? true : false,
+				"ignore" => ($isInherited) ? true : false,
+			), $args);
+
+			array_push($itemList, $item);
+			$values[$name] = $value;
 		}
 	?>
-	};
+	/* Original description of the form fields */
+	var mainFormDescription = <?php echo json_encode($itemList); ?>;
 
 	/* Original values stored on the server */
 	var originalValues = <?php echo json_encode($values); ?>;

@@ -2,7 +2,7 @@
 
 <?php
 	/* Do not cache any of this */
-	$this->cache()->disable();
+	$this->cacheDisable();
 ?>
 <h1>404</h1>
 <?php

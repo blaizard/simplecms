@@ -3,13 +3,18 @@
 	 * This file provides usefull functions to deal with the content.
 	 * A content file is built as follow:
 	 *
-	 * [ircms-xxx]   <- this a flag in the file stating the name of the variable (xxx is the name of the variable)
+	 * ---ircms-xxx:{"type":"textarea"}---   <- this a flag in the file stating the name of the variable (xxx is the name of the variable)
 	 *
 	 * I am multipline and
 	 * I am an random data <- The value of the variable
 	 *
-	 * [ircms-yyy] = I am a new value
+	 * ---ircms-yyy--- = I am a new value
 	 *
+	 * Some of the attributes are reserved and have a special meaning:
+	 * "_keep"
+	 * - "last" <default> Keep only the latest occurence.
+	 * - "all" Keep all occurence. If this is used, the output will be an array,
+	 *         which each entry corresponding to an occurence.
 	 */
 
 	/**
@@ -26,8 +31,14 @@
 
 	class IrcmsContent {
 
-		private $_env;
-		private $_cache;
+		private $m_env;
+		private $m_cache;
+
+		/**
+		 * Data type
+		 */
+		const TYPE_ARRAY = 1;
+		const TYPE_STRING = 2;
 
 		/**
 		 * Associate a content object with an environement variable.
@@ -35,28 +46,106 @@
 		 * file dependencies
 		 */
 		public function __construct($env, $cache = null) {
-			$this->_env = $env;
-			$this->_cache = $cache;
+			$this->m_env = $env;
+			$this->m_cache = $cache;
 		}
 
 		/**
 		 * Update the cache dependencies
+		 * \todo need to include the template as well
 		 */
 		private function _updateCacheDeps() {
 			/* Get the bottom and top path */
-			$current = realpath($this->_env->get("fullpath", "current"));
-			$top_length = strlen(realpath($this->_env->get("fullpath", "data")));
+			$current = realpath($this->m_env->get("fullpath", "current"));
+			$top_length = strlen(realpath($this->m_env->get("fullpath", "data")));
 			$deps = array();
 
 			/* Loop until the current path become a parent of the top path */
 			while (strlen($current) >= $top_length) {
 				$file = IrcmsPath::concat($current, IRCMS_CONTENT);
-				$this->_cache->addDependency($file, file_exists($file));
+				$this->m_cache->addDependency($file, file_exists($file));
 				/* Update the current path */
 				$current = dirname($current);
 			}
 
 			return $deps;
+		}
+
+		/**
+		 * This function dumps important information about this module
+		 */
+		public function dump() {
+			return "_getFileList() = ".var_export($this->_getFileList(), true);
+		}
+
+		/**
+		 * From a path and a template directory, get the mirrored path into this template directory
+		 * \return The new path created through the template directory. If the path given is already a
+		 *         path going through the template, then null is returned.
+		 */
+		private function _getTemplatePath($path, $template) {
+			// Make sure the template path is not already in the path
+			if (IrcmsPath::isSubPath($template, $path)) {
+				return null;
+			}
+			// Construct the mirrored path going through the template directory
+			// For example: /this/is/the/template/ + /this/is/the/path/location -> /this/is/the/template/location
+			$relative = substr($path, strlen(dirname($template)));
+			if (($pos = strpos($relative, "/", 1)) === false) {
+				return null;
+			}
+			// Return the new path and the root directory of the item mirroring the template
+			// This can be then used by this same function to re-iterate the process the other way
+			return array(
+				IrcmsPath::concat($template, substr($relative, $pos)),
+				dirname($template).substr($relative, 0, $pos)
+			);
+		}
+
+		/**
+		 * Add files the file list. This also take care of templates by adding the template
+		 * entry to the file list as well.
+		 */
+		private function _fileListExtend(&$list, $path_list, $mirror = null) {
+			foreach ($path_list as $path) {
+				$template = $path;
+				if ($mirror) {
+					if ($result = Self::_getTemplatePath($path, $mirror)) {
+						$path = $result[0];
+					}
+				}
+				array_push($list, array($path, $template));
+			}
+		}
+
+		/**
+		 * This function will build and return the file list to be used for the content discovery
+		 */
+		private function _getFileList() {
+
+			$file_list = array();
+			$bottom = $this->m_env->get("fullpath", "current");
+			do {
+				// Look for a templates (if any)
+				$template = IrcmsPath::find($bottom, $this->m_env->get("fullpath", "data"), IRCMS_TEMPLATE, IrcmsPath::FIND_DIRECTORY | IrcmsPath::FIND_EXCLUDE_BOTTOM);
+				$top = ($template) ? dirname($template) : $this->m_env->get("fullpath", "data");
+
+				// Look for all the content files in between the bottom and the top
+				Self::_fileListExtend($file_list, IrcmsPath::findMulti($bottom, $top, IRCMS_CONTENT, IrcmsPath::FIND_FILE | IrcmsPath::FIND_EXCLUDE_TOP));
+
+				// If a template directory has been found, look into it as well
+				if ($template) {
+					$template_path = Self::_getTemplatePath($this->m_env->get("fullpath", "current"), $template);
+					if ($template_path) {
+						Self::_fileListExtend($file_list, IrcmsPath::findMulti($template_path[0], $template, IRCMS_CONTENT), $template_path[1]);
+					}
+					$bottom = $top;
+				}
+			} while ($template);
+
+			// Include the top directory that were omitted
+			Self::_fileListExtend($file_list, IrcmsPath::findMulti($top, $top, IRCMS_CONTENT));
+			return $file_list;
 		}
 
 		/**
@@ -66,34 +155,59 @@
 		 */
 		public function read() {
 
-			/* Update the file dependencies of the cache */
-			if ($this->_cache) {
+			// Update the file dependencies of the cache
+			if ($this->m_cache) {
 				$this->_updateCacheDeps();
 			}
 
-			/* Get the content file list */
-			$file_list = IrcmsPath::findMulti($this->_env->get("fullpath", "current"), $this->_env->get("fullpath", "data"), IRCMS_CONTENT);
+			// Get the content file list
+			$file_list = $this->_getFileList();
 
-			/* Initializes the data, empty at first */
+			// Initializes the data, empty at first
 			$data = array();
 
 			foreach ($file_list as $file) {
-				/* Read and decode the file contents */
-				$cur_data = IrcmsContent::readFile($file);
-				/* If the current data are data inherited from upper directories or not */
-				$isInherit = ($file == $this->_env->get("fullpath", "content")) ? false : true;
-				/* Extends the array */
+				// Read and decode the file contents
+				$cur_data = IrcmsContent::readFile($file[1]);
+				// If the current data are data inherited from upper directories or not
+				$isInherit = ($file[1] == $this->m_env->get("fullpath", "content")) ? false : true;
+				// Extends the array
 				foreach ($cur_data as $key => $value) {
-					/* Ignore if this value is already set, the priority goes to the firstly discovered files */
-					if (isset($data[$key])) {
+					// Ignore if this value is already set, the priority goes to the firstly discovered files
+					if (isset($data[$key]) && !$data[$key]["continue"]) {
 						continue;
 					}
-					/* Set wether or not this value is inherited from a previous content */
+					// Identify the current keep strategy
+					$keep = (isset($value["args"]["_keep"])) ? $value["args"]["_keep"] : "last";
+					// If this element should use occurence or not
+					$useOccurences = ($keep == "all" || (isset($data[$key]) && $data[$key]["continue"])) ? true : false;
+					// Set wether or not this value is inherited from a previous content
 					$value["inherit"] = $isInherit;
-					/* Mark the path of from where thsi value come from */
-					$value["path"] = $file;
-					/* Add the value to the list */
-					$data[$key] = $value;
+					// Mark the path of from where this value come from
+					$value["path"] = $file[0];
+					// Mark the template path from where this value come from
+					$value["template"] = $file[1];
+					// Mark the template path from where this value come from
+					$value["type"] = (is_array($value["value"])) ? Self::TYPE_ARRAY : Self::TYPE_STRING;
+					// If the value use occurence
+					if ($useOccurences) {
+						if (isset($data[$key]) && !isset($data[$key]["occurences"])) {
+							throw new Exception("This case should never happen, if the data is set, it should be an occurences-type data.");
+						}
+						else if (!isset($data[$key])) {
+							$data[$key] = array(
+								"occurences" => array()
+							);
+						}
+						// Push at the begining of the array, making the first entry discovered the latest one
+						array_unshift($data[$key]["occurences"], $value);
+					}
+					else {
+						// Add the value to the list
+						$data[$key] = $value;
+					}
+					// Defines if the exploration should continue for this value or stop
+					$data[$key]["continue"] = ($keep == "all") ? true : false;
 				}
 			}
 
@@ -147,7 +261,7 @@
 				/* Store the data into the array */
 				$data[$key] = array(
 					"value" => $value,
-					"args" => ($args) ? $args : "{}"
+					"args" => ($args) ? json_decode($args, true) : array()
 				);
 			}
 

@@ -170,7 +170,7 @@
 			$dir = @opendir($path);
 			/* Make sure the directory has been propertly opened */
 			if (!$dir) {
-				return exception_throw("Cannot open the directory `".$path."'");
+				throw new Exception("Cannot open the directory `".$path."'");
 			}
 
 			$file_list = array();
@@ -182,6 +182,9 @@
 					$file_list[] = $file;
 				}
 			}
+
+			/* Close the directory */
+			closedir($dir);
 
 			/* Alphabetically order the list */
 			natsort($file_list);
@@ -239,7 +242,12 @@
 		 * \private
 		 */
 		private static function getThumbnail($path, $options) {
-			return Irexplorer::encrypt($path);
+			$type = Irexplorer::getFileType($path, $options);
+			// Only specific file extension can have a generated thumbnail
+			if (in_array($type, array("jpg", "png", "gif"))) {
+				return "thumb:".Irexplorer::encrypt($path);
+			}
+			return "type:".$type;
 		}
 
 		/**
@@ -252,7 +260,7 @@
 			foreach ($categroy_list as $cat) {
 				/* Check if the category exists */
 				if (!isset($this->_options["categories"][$cat])) {
-					return exception_throw("The category `".$cat."' does not exists, please check the spelling.");
+					throw new Exception("The category `".$cat."' does not exists, please check the spelling.");
 				}
 				$c = $this->_options["categories"][$cat];
 				$data[$cat] = $c["fct"]($path, $this->_options);
@@ -303,7 +311,7 @@
 			foreach ($this->_options["show"] as $cat) {
 				/* Check if the column name exists */
 				if (!isset($this->_options["categories"][$cat])) {
-					return exception_throw("The category `".$cat."' does not exists, please check the spelling.");
+					throw new Exception("The category `".$cat."' does not exists, please check the spelling.");
 				}
 				/* Print the title of the column */
 				$col = $this->_options["categories"][$cat];
@@ -461,12 +469,27 @@
 				if (!isset($_GET["irexplorer-thumb"]) && !isset($_GET["irexplorer-size"])) {
 					Ircom::error("Missing request data.");
 				}
-				/* Check the file type */
-				$path = Irexplorer::decrypt($_GET["irexplorer-thumb"]);
-				$type = (is_dir($path)) ? "folder" : strtolower(pathinfo($path, PATHINFO_EXTENSION));
+				/* Parse the thumb argument */
+				if (!preg_match('/^([a-z]+):(.+)$/', $_GET["irexplorer-thumb"], $m)) {
+					Ircom::error("Malformed `irexplorer-thumb' attribute.");
+				}
+				switch ($m[1]) {
+				case 'type':
+					$path = null;
+					$type = $m[2];
+					break;
+				case 'thumb':
+					$path = Irexplorer::decrypt($m[2]);
+					$type = (is_dir($path)) ? "folder" : strtolower(pathinfo($path, PATHINFO_EXTENSION));
+					break;
+				default:
+					Ircom::error("Unkown type `".$m[1]."'.");
+				}
+
 				/* Find the file type */
 				$thumbnail_path = dirname(__FILE__)."/ressources/037-file-empty.svg";
 				$thumbnail_mime = "image/svg+xml";
+				$thumbnail_content = null;
 				switch ($type) {
 				/* Folder type */
 				case "folder":
@@ -502,31 +525,49 @@
 					$thumbnail_path = dirname(__FILE__)."/ressources/044-file-zip.svg";
 					$thumbnail_mime = "image/svg+xml";
 					break;
-				/* Image type */
+				// Image type
 				case "jpg":
 				case "png":
 				case "gif":
-					/* Create directory if does not exists */
-					$dirpath = dirname($path)."/.irexplorer-thumbs";
-					if (!is_dir($dirpath)) {
-						mkdir($dirpath);
-					}
-					$thumbnail_path = $dirpath."/".basename($path).".".$_GET["irexplorer-size"].".jpg";
 					$thumbnail_mime = "image/jpeg";
-					/* Create a thumbnail only if it does not already exists, or if the creation date is older than the actual file */
-					if (!is_file($thumbnail_path) || filemtime($thumbnail_path) < filemtime($path)) {
-						if (Irexplorer::imageThumbnail($path, $thumbnail_path, $_GET["irexplorer-size"], $_GET["irexplorer-size"]) === false) {
-							Ircom::error("Error while generating the thumbnail.");
+					// If the cache module is present
+					if (class_exists("IrcmsCache")) {
+							// Create a cache with a new container
+							$cache = new IrcmsCache($path.".".$_GET["irexplorer-size"].".cache", array("container" => "irexplorer-thumbs"));
+							$temp_filename = basename($path).".".$_GET["irexplorer-size"].".jpg";
+							if (!$cache->isValid()) {
+								if (Irexplorer::imageThumbnail($path, $temp_filename, $_GET["irexplorer-size"], $_GET["irexplorer-size"]) === false) {
+									Ircom::error("Error while generating the thumbnail.");
+								}
+								$cache->set(file_get_contents($temp_filename));
+								unlink($temp_filename);
+							}
+							// Read the cache
+							$thumbnail_content = $cache->get();
+					}
+					// Else use a simple cache
+					else {
+						// Create directory if does not exists
+						$dirpath = dirname($path)."/.irexplorer-thumbs";
+						if (!is_dir($dirpath)) {
+							mkdir($dirpath);
+						}
+						$thumbnail_path = $dirpath."/".basename($path).".".$_GET["irexplorer-size"].".jpg";
+						// Create a thumbnail only if it does not already exists, or if the creation date is older than the actual file
+						if (!is_file($thumbnail_path) || filemtime($thumbnail_path) < filemtime($path)) {
+							if (Irexplorer::imageThumbnail($path, $thumbnail_path, $_GET["irexplorer-size"], $_GET["irexplorer-size"]) === false) {
+								Ircom::error("Error while generating the thumbnail.");
+							}
 						}
 					}
 					break;
 				}
-				/* Return the image */
+				// Return the image
 				header("Content-type: ".$thumbnail_mime);
-				echo file_get_contents($thumbnail_path);
+				echo ($thumbnail_content) ? $thumbnail_content : file_get_contents($thumbnail_path);
 				die();
 
-			/* This means that the action is not supported */
+			// This means that the action is not supported
 			default:
 				Ircom::error("Unsupported action type `".$_GET["irexplorer"]."'.");
 			}

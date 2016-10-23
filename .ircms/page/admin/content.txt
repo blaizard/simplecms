@@ -2,13 +2,13 @@
 
 <?php
 	/* Do not cache any of the admin area files */
-	$this->cache()->disable();
+	$this->cacheDisable();
 
 	/* Load dependencies */
 	$this->jsHeader("deps/script.js");
 	$this->cssHeader("deps/style.css");
-	$this->jsHeader("/.ircms/deps/irexplorer.min.js");
-	$this->jsHeader("/.ircms/deps/ircom.js");
+	$this->jsHeader("/.ircms/deps/irexplorer/irexplorer.min.js");
+	$this->jsHeader("/.ircms/deps/ircom/ircom.js");
 
 	/* Deal with the "admin_path" query, which is the current path */
 	if (isset($_GET['admin_path'])) {

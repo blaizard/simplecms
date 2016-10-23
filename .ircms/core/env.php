@@ -127,32 +127,21 @@
 		 * \param path The path. It can be a realtive path or an absolute path.
 		 * \param [current_path] An optional path where the relative path should happened.
 		 *                       This can also be an array of path.
+		 * \param strict If set to true, it will only use the given \p current_path to look for
+		 * the path.
+		 * \param returnRelativePathOnly Instead of returning the actual path, only returns the relative path
 		 *
 		 * \return The absolute path or null in case of error.
 		 */
-		public function toPath($path, $current_path = null) {
-			/* Check if it is in the current path */
-			if (file_exists($this->get("fullpath", "current").$path)) {
-				return IrcmsPath::concat($this->get("fullpath", "current"), $path);
+		public function toPath($path, $current_path = null, $strict = false, $returnRelativePathOnly = false) {
+			$current_path_list = (is_array($current_path)) ? $current_path : array($current_path);
+			if (!$strict) {
+				$current_path_list = array_merge(array($this->get("fullpath", "current")), $current_path);
 			}
-			/* Check if it is relative to the current path passed in argument */
-			if ($current_path) {
-				$current_path_list = (is_array($current_path)) ? $current_path : array($current_path);
-				foreach ($current_path_list as $current_path) { 
-					if (file_exists($current_path.DIRECTORY_SEPARATOR.$path)) {
-						return IrcmsPath::concat($current_path, $path);
-					}
-				}
+			if ($returnRelativePathOnly) {
+				return $current_path_list;
 			}
-			/* Check if it is relative to the root directory */
-			if (file_exists($this->get("fullpath", "data").$path)) {
-				return IrcmsPath::concat($this->get("fullpath", "data"), $path);
-			}
-			/* If it is already an absolute path, do nothing */
-			if (file_exists($path)) {
-				return $path;
-			}
-			return false;
+			return IrcmsPath::toPath($path, $current_path_list, array($this->get("fullpath", "data"), ""));
 		}
 
 		/**

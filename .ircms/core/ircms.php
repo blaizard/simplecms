@@ -26,7 +26,7 @@
 	 */
 	if (!defined('IRCMS_HTTP')) {
 		$document_root = IrcmsPath::clean(substr(realpath(dirname(__FILE__)), strlen(realpath($_SERVER['DOCUMENT_ROOT']))).DIRECTORY_SEPARATOR."..".DIRECTORY_SEPARATOR."..".DIRECTORY_SEPARATOR);
-		define('IRCMS_HTTP', ((isset($_SERVER['HTTPS']))?"https://":"http://").$_SERVER['HTTP_HOST'].$document_root);
+		define('IRCMS_HTTP', ((isset($_SERVER['HTTPS']))?"https://":"http://").((isset($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : "").$document_root);
 	}
 
 	/**
@@ -48,6 +48,7 @@
 	define('IRCMS_INDEX', (defined('IRCMS_CONF_INDEX')) ? IRCMS_CONF_INDEX : 'index.html');
 	define('IRCMS_PASSWORD', (defined('IRCMS_CONF_PASSWORD')) ? IRCMS_CONF_PASSWORD : '.ircmspwd');
 	define('IRCMS_CONTENT', (defined('IRCMS_CONF_CONTENT')) ? IRCMS_CONF_CONTENT : 'content.txt');
+	define('IRCMS_TEMPLATE', (defined('IRCMS_CONF_TEMPLATE')) ? IRCMS_CONF_TEMPLATE : '.template');
 
 	class Ircms {
 
@@ -66,6 +67,13 @@
 			/* Initialize the environment */
 			$this->_env = new IrcmsEnv($path);
 
+			/* Set the default cache configuration to allow other modules to use it*/
+			IrcmsCache::setDefault(array(
+					"path" => $this->_env->get("fullpath", "cache"),
+					"enable" => ($this->_env->get("fullpath", "cache")) ? true : false,
+					"invalid_time" => ((defined("IRCMS_CONF_CACHE_TIME")) ? IRCMS_CONF_CACHE_TIME : 3600 * 24)
+				));
+
 			/* If this is a file, it needs to be sourced */
 			if (is_file($this->_env->get("fullpath", "current"))) {
 				$this->_source($this->_env->get("fullpath", "current"));
@@ -73,15 +81,7 @@
 			}
 
 			/* Create the page cache */
-			$this->_cache = new IrcmsCache(
-					/* Cache configuration */
-					array(
-						"path" => $this->_env->get("fullpath", "cache"),
-						"enable" => ($this->_env->get("fullpath", "cache")) ? true : false
-					),
-					/* File path */
-					IrcmsPath::concat($this->_env->get("path"), $this->_env->id())
-			);
+			$this->_cache = new IrcmsCache(IrcmsPath::concat($this->_env->get("path"), $this->_env->id()));
 
 			/* Initialize the page associated to it */
 			$this->_page = new IrcmsPage($this->_env, $this->_cache);
@@ -102,7 +102,7 @@
 			/* Look if the page is in the cache, valid and returns it */
 			if ($this->_cache->isValid()) {
 				/* Add a message if debug is on, to tell from which cache it is taken from */
-				return $this->_cache->get().((IRCMS_DEBUG) ? "<!-- Cache ID ".$this->_cache->getId()." //-->\n" : "");
+				return $this->_cache->get().((IRCMS_DEBUG) ? "<!-- Cache ID ".$this->_cache->getContainer().":".$this->_cache->getId()." //-->\n" : "");
 			}
 			/* If not generate the content */
 			$data = $this->load();
@@ -119,7 +119,8 @@
 		public function dump() {
 			$dump = "// ****** IrcmsEnv Object ******\n".$this->_env->dump()."\n";
 			$dump .= "// ****** IrcmsPage Object ******\n".$this->_page->dump()."\n";
-			//$dump .= "// ****** IrcmsContent Object ******\n".var_export($this->load(), true)."\n";
+			$content = new IrcmsContent($this->_env);
+			$dump .= "// ****** IrcmsContent Object ******\n".$content->dump()."\n";
 			return $dump;
 		}
 

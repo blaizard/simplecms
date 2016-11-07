@@ -209,14 +209,15 @@
 		 *         2 if \p subpath is equal to \p patth  
 		 */
 		public static function isSubPath($path, $subpath) {
-			$path = Self::clean($path);
-			$subpath = Self::clean($subpath);
+			$path = Self::clean($path.DIRECTORY_SEPARATOR);
+			$subpath = Self::clean($subpath.DIRECTORY_SEPARATOR);
 			// If they are identical, returns 2
 			if ($path == $subpath) {
 				return 2;
 			}
+			$subpathInsidePath = (strpos($subpath, $path) === 0);
 			// If path is found at the begining of subpath, then this is a match
-			return (strpos($subpath, $path) === 0) ? 1 : 0;
+			return ($subpathInsidePath) ? 1 : 0;
 		}
 
 		/**
@@ -278,6 +279,37 @@
 				array_push($result, array($item."/", $current_path));
 			}
 			return $result;
+		}
+
+		/**
+		 * Return the file list located at the specified path
+		 */
+		public static function getFileList($path, $includeHidden = false) {
+			$dir = @opendir($path);
+			if (!$dir) {
+				throw new Exception("Cannot open the directory `".$path."'");
+			}
+			$fileList = array();
+			while(($file = readdir($dir)) != false) {
+				if ($file != "." && $file != "..") {
+					if (!$includeHidden && ($file[0] == "." || $file[0] == "@")) {
+						continue;
+					}
+					$fileList[] = $file;
+				}
+			}
+			closedir($dir);
+			return $fileList;
+		}
+
+		/**
+		 * Return the directory list located at the specified path
+		 */
+		public static function getDirectoryList($path, $includeHidden = false) {
+			$fileList = Self::getFileList($path, $includeHidden);
+			return array_filter($fileList, function($file) use ($path) {
+				return is_dir($path.DIRECTORY_SEPARATOR.$file);
+			});
 		}
 	}
 ?>

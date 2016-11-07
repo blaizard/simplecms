@@ -166,6 +166,9 @@
 			// Initializes the data, empty at first
 			$data = array();
 
+			// This defines the entries to push instead of unshift when merging
+			$reverseList = array();
+
 			foreach ($file_list as $file) {
 				// Read and decode the file contents
 				$cur_data = IrcmsContent::readFile($file[1]);
@@ -180,7 +183,7 @@
 					// Identify the current keep strategy
 					$keep = (isset($value["args"]["_keep"])) ? $value["args"]["_keep"] : "last";
 					// If this element should use occurence or not
-					$useOccurences = ($keep == "all" || (isset($data[$key]) && $data[$key]["continue"])) ? true : false;
+					$useOccurences = ($keep == "all" || $keep == "allReverse" || (isset($data[$key]) && $data[$key]["continue"])) ? true : false;
 					// Set wether or not this value is inherited from a previous content
 					$value["inherit"] = $isInherit;
 					// Mark the path of from where this value come from
@@ -189,6 +192,10 @@
 					$value["template"] = $file[1];
 					// Mark the template path from where this value come from
 					$value["type"] = (is_array($value["value"])) ? Self::TYPE_ARRAY : Self::TYPE_STRING;
+					// If reverse all is defined
+					if ($keep == "allReverse") {
+						$reverseList[$key] = true;
+					}
 					// If the value use occurence
 					if ($useOccurences) {
 						if (isset($data[$key]) && !isset($data[$key]["occurences"])) {
@@ -199,15 +206,20 @@
 								"occurences" => array()
 							);
 						}
+						if (isset($reverseList[$key])) {
+							array_push($data[$key]["occurences"], $value);
+						}
 						// Push at the begining of the array, making the first entry discovered the latest one
-						array_unshift($data[$key]["occurences"], $value);
+						else {
+							array_unshift($data[$key]["occurences"], $value);
+						}
 					}
 					else {
 						// Add the value to the list
 						$data[$key] = $value;
 					}
 					// Defines if the exploration should continue for this value or stop
-					$data[$key]["continue"] = ($keep == "all") ? true : false;
+					$data[$key]["continue"] = ($keep == "all" || $keep == "allReverse") ? true : false;
 				}
 			}
 

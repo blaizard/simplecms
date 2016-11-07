@@ -1,4 +1,4 @@
-/* irform (16.10.20) by Blaise Lengrand */
+/* irform (16.10.23) by Blaise Lengrand */
 /**
  * This file handles forms in general. It adds the ability to read form values dynamically and
  * adds multi form functionality (i.e. being able to have arrays in form).
@@ -12,7 +12,7 @@
  */
 
 /**
- * Irform class, use to manipulate forms and create
+ * \brief Irform class, use to manipulate forms and create
  * \param [options] Options to be passed to the form, see \ref Irform.defaultOptions for more details.
  */
 var Irform = function (container, formDescription, options) {
@@ -29,12 +29,33 @@ var Irform = function (container, formDescription, options) {
  * Preset used for validation
  */
 //! \{
+/**
+ * \brief Validates a to z characters
+ */
 Irform.CHAR_A_Z = 0x01;
+/**
+ * \brief Validates numeric characters
+ */
 Irform.CHAR_0_9 = 0x02;
+/**
+ * \brief Validates spaces, including newlines and tabs
+ */
 Irform.CHAR_SPACE = 0x04;
-Irform.CHAR_SPECIAL = 0x08; // !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
+/**
+ * \brief Validates special characters: \code !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ \endcode
+ */
+Irform.CHAR_SPECIAL = 0x08;
+/**
+ * \brief Validates upper case charaters only
+ */
 Irform.CHAR_UPPERCASE_ONLY = 0x10;
-Irform.CHAR_LOWERCASE_ONLY = 0x20; 
+/**
+ * \brief Validates lower case characters only
+ */
+Irform.CHAR_LOWERCASE_ONLY = 0x20;
+/**
+ * \brief Validates emails
+ */
 Irform.EMAIL = "^[A-Za-z0-9\._%\+\-]+@[A-Za-z0-9\.\-]+\.[a-zA-Z]{2,}$";
 //! \}
 
@@ -373,7 +394,7 @@ Irform.prototype.validate = function (item, value) {
 		return re.test(value);
 	}
 	else if (typeof data.validate === "function") {
-		return data.validate.call(item, value);
+		return data.validate.call(this, value, item);
 	}
 	/* By default the validation passed */
 	return true;
@@ -574,7 +595,7 @@ Irform.clear = function (selector) {
  */
 (function($) {
 	/**
-	 * \brief .\n
+	 * \brief Here goes the brief of irformArray.
 	 *
 	 * \alias jQuery.irformArray
 	 *
@@ -810,7 +831,6 @@ Irform.clear = function (selector) {
 	}
 
 	/**
-	 * \alias irformArray.defaults
 	 * \brief Default options, can be overwritten. These options are used to customize the object.
 	 * Change default values:
 	 * \code $().irformArray.defaults.theme = "aqua"; \endcode
@@ -936,7 +956,6 @@ Irform.defaultOptions.fields.array = function(name, options) {
 	};
 
 	/**
-	 * \alias irformArrayKeywords.defaults
 	 * \brief Default options, can be overwritten. These options are used to customize the object.
 	 * Change default values:
 	 * \code $().irformArrayKeywords.defaults.theme = "aqua"; \endcode
@@ -1185,7 +1204,6 @@ Irform.defaultOptions.fields.keywords = function(name) {
 	}
 
 	/**
-	 * \alias irformTinymce.defaults
 	 * \brief Default options, can be overwritten. These options are used to customize the object.
 	 * Change default values:
 	 * \code $().irformTinymce.defaults.theme = "aqua"; \endcode
@@ -1231,11 +1249,13 @@ Irform.defaultOptions.fields.keywords = function(name) {
 			menubar: false,
 			statusbar: false,
 			autoresize_max_height: ($(window).innerHeight() - 100), //< For the toolbar
-			toolbar: "undo redo | styleselect | bold italic | forecolor | removeformat | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | code | fullscreen",
+			toolbar: "undo redo | styleselect | bold italic | forecolor | removeformat | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | codesample link image media table | code | fullscreen",
 			plugins: [ "advlist autolink autoresize link image lists charmap print preview hr anchor pagebreak spellchecker",
 				"searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking",
-				"save table contextmenu directionality emoticons template paste textcolor"
+				"save table contextmenu directionality emoticons template paste textcolor codesample"
 			]
+
+
 		},
 	};
 
@@ -1369,7 +1389,6 @@ Irform.defaultOptions.fields.htmleditor = function(name, options, callback) {
 	}
 
 	/**
-	 * \alias irformFile.defaults
 	 * \brief Default options, can be overwritten. These options are used to customize the object.
 	 * Change default values:
 	 * \code $().irformFile.defaults.theme = "aqua"; \endcode

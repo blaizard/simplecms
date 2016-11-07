@@ -8,12 +8,27 @@
 		private $m_pathHistory;
 		private $m_pathHistoryTemplate;
 		private $m_content;
+		private $m_currentVariable;
 
 		public function __construct($page, $content) {
 			$this->m_page = $page;
 			$this->m_content = $content;
 			$this->m_pathHistory = array();
 			$this->m_pathHistoryTemplate = array();
+			$this->m_currentVariable = array();
+		}
+
+		/**
+		 * Check wether or not the code is from the local data file or inherited.
+		 */
+		public function isLocal($name = null) {
+			if ($name === null) {
+				$name = end($this->m_currentVariable);
+				if (!$name) {
+					return false;
+				}
+			}
+			return $this->data($name) && !IrcmsPath::cmp($this->toPath($this->env("path")), dirname($this->dataPath($name)));
 		}
 
 		/**
@@ -68,43 +83,43 @@
 		/**
 		 * Add a CSS header
 		 */
-		public function cssHeader($file) {
+		public function cssHeader($file, $uniqueId = null) {
 			/* Try to convert it into a valid path */
 			$path = $this->toPath($file);
-			$this->m_page->addCssHeader(($path === null) ? $file : $path);
+			$this->m_page->addCssHeader(($path === null) ? $file : $path, $uniqueId);
 		}
 
 		/**
 		 * Add a JavaScript header
 		 */
-		public function jsHeader($file) {
+		public function jsHeader($file, $uniqueId = null) {
 			/* Try to convert it into a valid path */
 			$path = $this->toPath($file);
-			$this->m_page->addJsHeader(($path === null) ? $file : $path);
+			$this->m_page->addJsHeader(($path === null) ? $file : $path, $uniqueId);
 		}
 
 		/**
 		 * Add a CSS header from the template directory (if applicable)
 		 */
-		public function cssHeaderTemplate($file) {
+		public function cssHeaderTemplate($file, $uniqueId = null) {
 			/* Try to convert it into a valid path */
 			$path = $this->toPath($file, array(
 					$this->m_page->getCurrentPathTemplate(),
 					$this->env("fullpath", "index")
 				), true);
-			$this->m_page->addCssHeader(($path === null) ? $file : $path);
+			$this->m_page->addCssHeader(($path === null) ? $file : $path, $uniqueId);
 		}
 
 		/**
 		 * Add a CSS JavaScript from the template directory (if applicable)
 		 */
-		public function jsHeaderTemplate($file) {
+		public function jsHeaderTemplate($file, $uniqueId = null) {
 			/* Try to convert it into a valid path */
 			$path = $this->toPath($file, array(
 					$this->m_page->getCurrentPathTemplate(),
 					$this->env("fullpath", "index")
 				), true);
-			$this->m_page->addJsHeader(($path === null) ? $file : $path);
+			$this->m_page->addJsHeader(($path === null) ? $file : $path, $uniqueId);
 		}
 
 		/**
@@ -167,7 +182,7 @@
 
 		/**
 		 * Return the data identified by the name
-		 * This value can also be assigned. Note that the assignemtn will only last the time of
+		 * This value can also be assigned. Note that the assignement will only last the time of
 		 * of the page generation.
 		 * \param onlyLast Return only the latest occcurence. This is valid only if a data is having
 		 *                 multipe occurences.
@@ -196,6 +211,32 @@
 				"value" => $value,
 				"type" => (is_array($value)) ? IrcmsContent::TYPE_ARRAY : IrcmsContent::TYPE_STRING
 			);
+		}
+
+		/**
+		 * Append a value to the current value of a data
+		 * It must be of the same type.
+		 */
+		public function dataAppend($name, $value) {
+			if (isset($this->m_content[$name])) {
+				$valueType = (is_array($value)) ? IrcmsContent::TYPE_ARRAY : IrcmsContent::TYPE_STRING;
+				if ($this->m_content[$name]["type"] != $valueType) {
+					throw new Exception("The type of the value intented to be append do not match the original type.");
+				}
+				switch ($valueType) {
+				case IrcmsContent::TYPE_ARRAY:
+					array_merge($this->m_content[$name]["value"], $value);
+					break;
+				case IrcmsContent::TYPE_STRING:
+					$this->m_content[$name]["value"] .= $value;
+					break;
+				default:
+					throw new Exception("Unsupported type `".$valueType."'.");
+				}
+			}
+			else {
+				$this->dataSet($name, $value);
+			}
 		}
 
 		/**
@@ -278,11 +319,13 @@
 				// Update the path history
 				$this->m_page->pushCurrentPath($data["path"]);
 				$this->m_page->pushCurrentPathTemplate($data["template"]);
+				array_push($this->m_currentVariable, $name);
 
 				// Process the data
 				eval("?".">$value");
 
 				// Remove the path from the history
+				array_pop($this->m_currentVariable);
 				$this->m_page->popCurrentPath();
 				$this->m_page->popCurrentPathTemplate();
 			}
@@ -301,6 +344,19 @@
 			include($path);
 			// Remove the path from the history
 			$this->m_page->popCurrentPath();
+		}
+
+		/**
+		 * \copydoc fileInclude
+		 * Using the template directory as reference
+		 */
+		public function fileIncludeTemplate($file) {
+			// Try to convert it into a valid path
+			$path = $this->toPath($file, array(
+					$this->m_page->getCurrentPathTemplate(),
+					$this->env("fullpath", "index")
+				), true);
+			$this->fileInclude($path);
 		}
 
 	}

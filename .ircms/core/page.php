@@ -27,6 +27,7 @@
 			$this->_cssHeader = array();
 			$this->_jsHeader = array();
 			$this->_header = array();
+			$this->_idList = array();
 
 			/* Save the environement object */
 			$this->_env = $env; 
@@ -65,21 +66,39 @@
 		/**
 		 * Add a CSS file path to the list
 		 */
-		public function addCssHeader($path) {
-			array_push($this->_cssHeader, $path);
+		public function addCssHeader($path, $uniqueId = null) {
+			if ($uniqueId && in_array($uniqueId, $this->_idList)) {
+				return;
+			}
+			array_push($this->_idList, $uniqueId);
+			// Push only if the header or id is not set yet
+			if (!in_array($path, $this->_cssHeader)) {
+				array_push($this->_cssHeader, $path);
+			}
 		}
 
 		/**
 		 * Add a Javascript file path to the list
 		 */
-		public function addJsHeader($path) {
-			array_push($this->_jsHeader, $path);
+		public function addJsHeader($path, $uniqueId = null) {
+			if ($uniqueId && in_array($uniqueId, $this->_idList)) {
+				return;
+			}
+			array_push($this->_idList, $uniqueId);
+			// Push only if the header or id is not set yet
+			if (!in_array($path, $this->_jsHeader)) {
+				array_push($this->_jsHeader, $path);
+			}
 		}
 
 		/**
 		 * Add an HTML header to the list
 		 */
-		public function addHeader($str) {
+		public function addHeader($str, $uniqueId = null) {
+			if ($uniqueId && in_array($uniqueId, $this->_idList)) {
+				return;
+			}
+			array_push($this->_idList, $uniqueId);
 			array_push($this->_header, $str);
 		}
 

@@ -77,9 +77,6 @@
 			if (!file_exists($this->m_config) || time() - filemtime($this->m_config) > $this->m_options["clean_interval"]) {
 				$this->clean($this->m_options["clean_chunk"]);
 			}
-
-			// HACK
-		//	$this->m_options["enable"] = false;
 		}
 
 		/**

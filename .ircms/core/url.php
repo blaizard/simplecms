@@ -51,5 +51,13 @@
 			/* Return the new name */
 			return $string;
 		}
+
+		/**
+		 * Redirect the current page to the specified URL
+		 */
+		public static function redirect($url) {
+			header("Location: ".$url);
+			die();
+		}
 	}
 ?>

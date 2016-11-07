@@ -130,7 +130,7 @@
 		private function _source($file) {
 			/* Look for the type of file */
 			$info = pathinfo($file);
-			$ext = strtolower($info["extension"]);
+			$ext = (isset($info["extension"])) ? strtolower($info["extension"]) : "";
 
 			/* Handles special cases */
 			switch ($ext) {

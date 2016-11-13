@@ -24,4 +24,5 @@ php "Please install 'apt-get install php5-fpm php5 php5-cli php5-json'"
 EOF
 
 echo "Connect to the server: http://127.0.0.1:8000/"
+kill -9 `fuser 8000/tcp`
 php -S localhost:8000 -t ../../ php/router_script.php

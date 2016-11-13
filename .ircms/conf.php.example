@@ -21,6 +21,11 @@
 	define('IRCMS_CONF_CACHE_TIME', 3600 * 24);
 
 	/**
+	 * Enable the admin section
+	 */
+	define('IRCMS_CONF_ADMIN', false);
+
+	/**
 	 * Enable the access privileges
 	 */
 	define('IRCMS_CONF_ACCESS', false);

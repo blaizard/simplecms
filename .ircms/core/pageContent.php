@@ -41,9 +41,9 @@
 		/**
 		 * Convert a path into a URL.
 		 */
-		public function toUrl($file, $relative_path = array(), $strict = false) {
+		public function toUrl($file, $relativePath = array(), $strict = false) {
 			// First convert the path into an absolute path
-			$path = $this->toPath($file, $relative_path, $strict);
+			$path = $this->toPath($file, $relativePath, $strict);
 			// Then convert it into a path
 			try {
 				return $this->m_page->env()->toUrl(($path) ? $path : $file);
@@ -53,7 +53,7 @@
 				if (!$path) {
 					$msg .= "    Could not convert `".$file."' into an absolute path\n";
 					$msg .= "    Looked into:\n";
-					foreach ($this->toPath($file, $relative_path, $strict, true) as $p) {
+					foreach ($this->toPath($file, $relativePath, $strict, true) as $p) {
 						$msg .= "        ".$p."\n";
 					}
 				}
@@ -65,11 +65,28 @@
 		}
 
 		/**
-		 * Convert a path into an absolute path. Optionally take as argument base paths
+		 * Convert a path into an absolute path. Optionally take as argument relative paths
 		 * to test with the relative path.
 		 */
 		public function toPath($file, $relativePath = array(), $strict = false, $returnRelativePathOnly = false) {
-			/* Create the realtive path */
+			$path = $this->isPath($file, $relativePath, $strict, $returnRelativePathOnly);
+			if ($path === null) {
+				$msg = "Invalid path `".$file."'\n";
+				$msg .= "    Could not convert `".$file."' into an absolute path\n";
+				$msg .= "    Looked into:\n";
+				foreach ($this->isPath($file, $relativePath, $strict, true) as $p) {
+					$msg .= "        ".$p."\n";
+				}
+				throw new Exception($msg);
+			}
+			return $path;
+		}
+
+		/**
+		 * Check if a path is valid, if so returns it.
+		 */
+		public function isPath($file, $relativePath = array(), $strict = false, $returnRelativePathOnly = false) {
+			// Create the realtive path
 			$relativePathList = (is_array($relativePath)) ? $relativePath : array($relativePath);
 			if (!$strict) {
 				$relativePathList = array_merge($relativePathList, array(
@@ -84,7 +101,7 @@
 		 * Add a CSS header
 		 */
 		public function cssHeader($file, $uniqueId = null) {
-			/* Try to convert it into a valid path */
+			// Try to convert it into a valid path
 			$path = $this->toPath($file);
 			$this->m_page->addCssHeader(($path === null) ? $file : $path, $uniqueId);
 		}
@@ -93,7 +110,7 @@
 		 * Add a JavaScript header
 		 */
 		public function jsHeader($file, $uniqueId = null) {
-			/* Try to convert it into a valid path */
+			// Try to convert it into a valid path
 			$path = $this->toPath($file);
 			$this->m_page->addJsHeader(($path === null) ? $file : $path, $uniqueId);
 		}
@@ -102,7 +119,7 @@
 		 * Add a CSS header from the template directory (if applicable)
 		 */
 		public function cssHeaderTemplate($file, $uniqueId = null) {
-			/* Try to convert it into a valid path */
+			// Try to convert it into a valid path
 			$path = $this->toPath($file, array(
 					$this->m_page->getCurrentPathTemplate(),
 					$this->env("fullpath", "index")
@@ -114,7 +131,7 @@
 		 * Add a CSS JavaScript from the template directory (if applicable)
 		 */
 		public function jsHeaderTemplate($file, $uniqueId = null) {
-			/* Try to convert it into a valid path */
+			// Try to convert it into a valid path
 			$path = $this->toPath($file, array(
 					$this->m_page->getCurrentPathTemplate(),
 					$this->env("fullpath", "index")
@@ -147,9 +164,6 @@
 		public function cacheDependency($file, $exists = true) {
 			/* Try to convert it into a valid path */
 			$path = $this->toPath($file);
-			if ($path === null) {
-				throw new Exception("This path `".$file."' does not exists.");
-			}
 			$this->m_page->cache()->addDependency($path, $exists);
 			return $path;
 		}
@@ -335,28 +349,32 @@
 		 * \brief Include a file located from the path passed in argument.
 		 * Files included with this function are automatically added to the cache dependencies.
 		 */
-		public function fileInclude($file) {
+		public function fileInclude($file, $updatePath = true) {
 			// Try to convert it into a valid path and add it to the cache deps
 			$path = $this->cacheDependency($file);
 			// Update the path history
-			$this->m_page->pushCurrentPath($path);
+			if ($updatePath) {
+				$this->m_page->pushCurrentPath($path);
+			}
 			// Include the file
 			include($path);
 			// Remove the path from the history
-			$this->m_page->popCurrentPath();
+			if ($updatePath) {
+				$this->m_page->popCurrentPath();
+			}
 		}
 
 		/**
 		 * \copydoc fileInclude
 		 * Using the template directory as reference
 		 */
-		public function fileIncludeTemplate($file) {
+		public function fileIncludeTemplate($file, $updatePath = true) {
 			// Try to convert it into a valid path
 			$path = $this->toPath($file, array(
 					$this->m_page->getCurrentPathTemplate(),
 					$this->env("fullpath", "index")
 				), true);
-			$this->fileInclude($path);
+			$this->fileInclude($path, $updatePath);
 		}
 
 	}

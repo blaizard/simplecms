@@ -39,10 +39,10 @@
 
 	/* Set default configuration */
 	define('IRCMS_DEBUG', (defined('IRCMS_CONF_DEBUG')) ? IRCMS_CONF_DEBUG : false);
-	define('IRCMS_CACHE', (defined('IRCMS_CONF_CACHE')) ? IRCMS_ROOT.IRCMS_CONF_CACHE : false);
+	define('IRCMS_CACHE', (defined('IRCMS_CONF_CACHE') && IRCMS_CONF_CACHE) ? IRCMS_ROOT.IRCMS_CONF_CACHE : false);
 	define('IRCMS_ACCESS', (defined('IRCMS_CONF_ACCESS')) ? IRCMS_CONF_ACCESS : true);
 	define('IRCMS_DATA', realpath(IRCMS_ROOT.DIRECTORY_SEPARATOR.((defined('IRCMS_CONF_DATA')) ? IRCMS_CONF_DATA : './')).DIRECTORY_SEPARATOR);
-	define('IRCMS_ADMIN', realpath(IRCMS_ROOT.DIRECTORY_SEPARATOR.((defined('IRCMS_CONF_ADMIN')) ? IRCMS_CONF_ADMIN : '.ircms/page/admin')).DIRECTORY_SEPARATOR);
+	define('IRCMS_ADMIN', ((defined('IRCMS_CONF_ADMIN')) ? IRCMS_CONF_ADMIN : realpath(IRCMS_ROOT.DIRECTORY_SEPARATOR.'.ircms/page/admin/')));
 	define('IRCMS_NOTFOUND', realpath(IRCMS_ROOT.DIRECTORY_SEPARATOR.((defined('IRCMS_CONF_NOTFOUND')) ? IRCMS_CONF_NOTFOUND : '.ircms/page/notfound')).DIRECTORY_SEPARATOR);
 	define('IRCMS_THEME', realpath(IRCMS_ROOT.DIRECTORY_SEPARATOR.((defined('IRCMS_CONF_THEME')) ? IRCMS_CONF_THEME : '.ircms/theme/default')).DIRECTORY_SEPARATOR);
 	define('IRCMS_INDEX', (defined('IRCMS_CONF_INDEX')) ? IRCMS_CONF_INDEX : 'index.html');
@@ -64,26 +64,27 @@
 		 */
 		public function __construct($path) {
 
-			/* Initialize the environment */
+			// Initialize the environment
 			$this->_env = new IrcmsEnv($path);
 
-			/* Set the default cache configuration to allow other modules to use it*/
+			// Set the default cache configuration to allow other modules to use it
 			IrcmsCache::setDefault(array(
 					"path" => $this->_env->get("fullpath", "cache"),
 					"enable" => ($this->_env->get("fullpath", "cache")) ? true : false,
+					// Invalidate entry after 1 day
 					"invalid_time" => ((defined("IRCMS_CONF_CACHE_TIME")) ? IRCMS_CONF_CACHE_TIME : 3600 * 24)
 				));
 
-			/* If this is a file, it needs to be sourced */
+			// If this is a file, it needs to be sourced
 			if (is_file($this->_env->get("fullpath", "current"))) {
 				$this->_source($this->_env->get("fullpath", "current"));
 				die();
 			}
 
-			/* Create the page cache */
+			// Create the page cache
 			$this->_cache = new IrcmsCache(IrcmsPath::concat($this->_env->get("path"), $this->_env->id()));
 
-			/* Initialize the page associated to it */
+			// Initialize the page associated to it
 			$this->_page = new IrcmsPage($this->_env, $this->_cache);
 		}
 
@@ -99,17 +100,17 @@
 		 * Generate the page
 		 */
 		public function generate() {
-			/* Look if the page is in the cache, valid and returns it */
+			// Look if the page is in the cache, valid and returns it
 			if ($this->_cache->isValid()) {
-				/* Add a message if debug is on, to tell from which cache it is taken from */
+				// Add a message if debug is on, to tell from which cache it is taken from
 				return $this->_cache->get().((IRCMS_DEBUG) ? "<!-- Cache ID ".$this->_cache->getContainer().":".$this->_cache->getId()." //-->\n" : "");
 			}
-			/* If not generate the content */
+			// If not generate the content
 			$data = $this->load();
 			$content = $this->_page->generate($data);
-			/* And save it to the cache for later use */
+			// And save it to the cache for later use
 			$this->_cache->set($content);
-			/* Return the file content */
+			// Return the file content
 			return $content;
 		}
 

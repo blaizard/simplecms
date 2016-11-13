@@ -1,8 +1,4 @@
 <?php
-	if (!defined("IRCMS_CACHE_DEBUG")) {
-		define("IRCMS_CACHE_DEBUG", false);
-	}
-
 	/**
 	 * This file takes care of all the caching system.
 	 * The cache is located here: IRCMS_CACHE
@@ -11,6 +7,11 @@
 	 * This file is standalone, i.e. it does not depend on any other files.
 	 */
 	class IrcmsCache {
+
+		/**
+		 * Activate debug
+		 */
+		const IRCMS_CACHE_DEBUG = false;
 
 		private $m_id;
 		private $m_path;
@@ -51,31 +52,33 @@
 		);
 
 		public function __construct($file, $options = array()) {
-
 			$this->m_options = array_merge(IrcmsCache::$m_default, $options);
 
-			/* List of file dependecies for this cache, i.e if one of these files is altered, the cache should be invalidated */
+			// List of file dependecies for this cache, i.e if one of these files is altered, the cache should be invalidated
 			$this->m_deps = array();
 
-			/* Make sure the cache directory exists */
-			if (!file_exists($this->m_options["path"])) {
-				mkdir($this->m_options["path"]);
-			}
-			/* Cleanup the path */
-			$this->m_options["path"] = realpath($this->m_options["path"]);
-
-			/* Store the cache id */
+			// Store the cache id
 			$this->m_id = $file;
 
-			/* Generate the full path of the file id if relevant */
-			$this->m_path = $this->m_options["path"].DIRECTORY_SEPARATOR.$this->m_options["container"].DIRECTORY_SEPARATOR.ltrim($this->m_id, DIRECTORY_SEPARATOR);
+			// Do the following only if the cache is enabled
+			if ($this->m_options["enable"]) {
+				// Make sure the cache directory exists
+				if (!file_exists($this->m_options["path"])) {
+					mkdir($this->m_options["path"]);
+				}
+				// Cleanup the path
+				$this->m_options["path"] = realpath($this->m_options["path"]);
 
-			/* Build the config file full path */
-			$this->m_config = $this->m_options["path"].DIRECTORY_SEPARATOR.ltrim($this->m_options["config"], DIRECTORY_SEPARATOR);
+				// Generate the full path of the file id if relevant
+				$this->m_path = $this->m_options["path"].DIRECTORY_SEPARATOR.$this->m_options["container"].DIRECTORY_SEPARATOR.ltrim($this->m_id, DIRECTORY_SEPARATOR);
 
-			/* Clean the cache if needed */
-			if (!file_exists($this->m_config) || time() - filemtime($this->m_config) > $this->m_options["clean_interval"]) {
-				$this->clean($this->m_options["clean_chunk"]);
+				// Build the config file full path
+				$this->m_config = $this->m_options["path"].DIRECTORY_SEPARATOR.ltrim($this->m_options["config"], DIRECTORY_SEPARATOR);
+
+				// Clean the cache if needed
+				if (!file_exists($this->m_config) || time() - filemtime($this->m_config) > $this->m_options["clean_interval"]) {
+					$this->clean($this->m_options["clean_chunk"]);
+				}
 			}
 		}
 
@@ -142,7 +145,7 @@
 
 		private function _garbageCollect($config, $chunk) {
 
-			if (IRCMS_CACHE_DEBUG) {
+			if (Self::IRCMS_CACHE_DEBUG) {
 				echo "<!-- Cache starts at `".$config["path"]."' (chunk=".$chunk.") //-->\n";
 			}
 
@@ -167,7 +170,7 @@
 				return null;
 			}
 
-			if (IRCMS_CACHE_DEBUG) {
+			if (Self::IRCMS_CACHE_DEBUG) {
 				echo "<!-- Cache variables (dirpath:".$dirpath.";filename:".$filename." //-->\n";
 			}
 
@@ -190,7 +193,7 @@
 			 */
 			$config["path"] = ($output) ? substr($output, $top_length + 1) : null;
 
-			if (IRCMS_CACHE_DEBUG) {
+			if (Self::IRCMS_CACHE_DEBUG) {
 				echo "<!-- Cache ends at `".$config["path"]."' //-->\n";
 			}
 
@@ -233,7 +236,7 @@
 					/* If start is set, then it will go though the files from there, note that we bypas intentionaly the first file */
 					else if ($start) {
 						$path = $dirname.DIRECTORY_SEPARATOR.$file;
-						if (IRCMS_CACHE_DEBUG) {
+						if (Self::IRCMS_CACHE_DEBUG) {
 							echo "<!-- Cache file: `".$path."' (time=".(time() - filemtime($path))."s) ".((is_dir($path)) ? "FOLDER" : "FILE")." //-->\n";
 						}
 						/* If this is a directory, jumps into it and re-iterate */
@@ -388,14 +391,14 @@
 			}
 			/* Bypass if the cache is not enabled */
 			if (!$this->m_options["enable"]) {
-				if (IRCMS_CACHE_DEBUG) {
+				if (Self::IRCMS_CACHE_DEBUG) {
 					echo "<!-- Cache entry `".$this->m_id."' is invalid because the cache is disabled. //-->";
 				}
 				return false;
 			}
 			/* If the entry does not exists */
 			if (!$this->isCached()) {
-				if (IRCMS_CACHE_DEBUG) {
+				if (Self::IRCMS_CACHE_DEBUG) {
 					echo "<!-- Cache entry `".$this->m_id."' is invalid because the entry is not in the cache. //-->";
 				}
 				return false;
@@ -406,7 +409,7 @@
 			fclose($file);
 			/* If the dependency list is altered, raise an error */
 			if (!is_array($deps_list)) {
-				if (IRCMS_CACHE_DEBUG) {
+				if (Self::IRCMS_CACHE_DEBUG) {
 					echo "<!-- Cache entry `".$this->m_id."' is corrupted. //-->";
 				}
 				return false;
@@ -423,21 +426,21 @@
 				$exists = $elt[1];
 				/* If the file does not exists but it should */
 				if ($exists && !file_exists($file)) {
-					if (IRCMS_CACHE_DEBUG) {
+					if (Self::IRCMS_CACHE_DEBUG) {
 						echo "<!-- Cache entry `".$this->m_id."' is invalid because the dependency `".$file."' does not exists. //-->";
 					}
 					return false;
 				}
 				/* If the file exists but it should not */
 				if (!$exists && file_exists($file)) {
-					if (IRCMS_CACHE_DEBUG) {
+					if (Self::IRCMS_CACHE_DEBUG) {
 						echo "<!-- Cache entry `".$this->m_id."' is invalid because the dependency `".$file."' exists. //-->";
 					}
 					return false;
 				}
 				/* If the file is newer than the cache */
 				if ($exists && filemtime($file) > $cache_time) {
-					if (IRCMS_CACHE_DEBUG) {
+					if (Self::IRCMS_CACHE_DEBUG) {
 						echo "<!-- Cache entry `".$this->m_id."' is invalid because the dependency `".$file."' is newer than the cache. //-->";
 					}
 					return false;

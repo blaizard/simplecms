@@ -20,7 +20,7 @@ require () {
 }
 
 require <<EOF
-php "Please install 'apt-get install php5-fpm php5 php5-cli php5-json'"
+php "Please install 'apt-get install php-fpm php php-cli php-json php-xml'"
 EOF
 
 echo "Connect to the server: http://127.0.0.1:8000/"

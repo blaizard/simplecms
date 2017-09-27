@@ -16,6 +16,7 @@
 	require_once(".ircms/core/content.php");
 	require_once(".ircms/core/ircms.php");
 	require_once(".ircms/core/content.php");
+	require_once(".ircms/core/routing.php");
 	require_once(".ircms/core/page.php");
 	require_once(".ircms/core/pageContent.php");
 	require_once(".ircms/core/cache.php");

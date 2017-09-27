@@ -45,10 +45,10 @@ function addElement()
 	/* Generate the form */
 	form = new Irform(container, [
 		{name: "name", caption: "Name*", required: true, validate: Irform.CHAR_A_Z, placeholder: "Name", description: "Unique identifier that identifies this item, it should contain only a-z characters with no spaces.", type: "input"},
-		{name: "type", caption: "Type*", type: "select", description: "The type of field that will be created", select: {
+		{name: "type", caption: "Type*", type: "select", description: "The type of field that will be created", list: {
 				input: "Input",
 				textarea: "Textarea",
-				keywords: "Keywords",
+				tags: "Tags",
 				select: "Select",
 				filelist: "File List",
 				menulinks: "Menu Links",

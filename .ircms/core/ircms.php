@@ -129,18 +129,18 @@
 		 * This function source a file from its path
 		 */
 		private function _source($file) {
-			/* Look for the type of file */
+			// Look for the type of file
 			$info = pathinfo($file);
 			$ext = (isset($info["extension"])) ? strtolower($info["extension"]) : "";
 
-			/* Handles special cases */
+			// Handles special cases
 			switch ($ext) {
-			/* If this is a PHP script */
+			// If this is a PHP script
 			case "php":
 			case "php5":
-				/* Update the include path */
+				// Update the include path
 				set_include_path($info['dirname']);
-				/* Update the $_SERVER global variable */
+				// Update the $_SERVER global variable
 				$exploded_uri = explode("?", $_SERVER["REQUEST_URI"]);
 				$_SERVER = array_merge($_SERVER, array(
     				"SCRIPT_FILENAME" => $file,
@@ -154,9 +154,9 @@
     			));
 				include($info['basename']);
 				break;
-			/* Otherwise just transfer the content of the file */
+			// Otherwise just transfer the content of the file
 			default:
-				/* Identify the MIME type */
+				// Identify the MIME type
 				$mime = array(
 					"css" => "text/css",
 					"js" => "text/javascript",
@@ -171,9 +171,9 @@
 			    	$mime_type = finfo_file($finfo, $file);
 					finfo_close($finfo);
 				}
-				/* Send the right content type according to the file */
+				// Send the right content type according to the file
 				header("Content-type: ".$mime_type);
-				/* Send the file content */
+				// Send the file content
 				readfile($file);
 			}
 		}

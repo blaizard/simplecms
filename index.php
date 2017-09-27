@@ -10,32 +10,6 @@
 	// Create the routing and configure it
 	$app = new Routing();
 
-	$app->route("get", "/download/{url:.*}", function($vars) {
-
-		// Look for the type of file
-		$raw_url = strtok($vars['url'], '?');
-		$info = pathinfo($raw_url);
-		$ext = (isset($info["extension"])) ? strtolower($info["extension"]) : "";
-		$mime_type = "text/html";
-		if ($ext)
-		{
-			// Identify the MIME type
-			$mime = array(
-				"css" => "text/css",
-				"js" => "text/javascript",
-				"jpg" => "image/jpeg",
-				"json" => "application/json"
-			);
-			if (isset($mime[$ext])) {
-				$mime_type = $mime[$ext];
-			}
-		}
-		// Send the right content type according to the file
-		header("Content-type: ".$mime_type);
-		echo file_get_contents("https://www.blaizard.com:8001/".$vars['url']);
-		die();
-	});
-
 	$app->route(array("get", "post"), "{path:.*}", function($vars) {
 		$ircms = new Ircms(
 				/* If The path varaible is defined in the query string */

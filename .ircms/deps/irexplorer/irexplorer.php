@@ -445,7 +445,7 @@
 		 * This function deploys a server assuming the following modules are loaded:
 		 * - Ircom
 		 */
-		public static function server() {
+		public static function server($config = array()) {
 
 			/* Sanity check */
 			if (!isset($_GET["irexplorer"])) {
@@ -454,12 +454,13 @@
 
 			switch ($_GET["irexplorer"]) {
 
-			/* Handles the fetch */
+			// Handles the fetch
 			case "fetch":
-				/* Read the options */
+				// Read the options
 				$ircom = new Ircom();
-				/* Return the file list */
-				$ex = new Irexplorer($ircom->read());
+				// Return the file list
+				$config = array_merge_recursive($ircom->read(), $config);
+				$ex = new Irexplorer($config);
 				Ircom::success($ex->getData());
 				break;
 

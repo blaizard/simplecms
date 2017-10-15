@@ -471,31 +471,31 @@
 		 * Create the container of the browser
 		 */
 		create: function() {
-			/* Read the options */
+			// Read the options
 			var options = $(this).data("irexplorer");
-			/* Save the instance of the main object for later use */
+			// Save the instance of the main object for later use
 			var obj = this;
-			/* Create the header that will contain the views */
+			// Create the header that will contain the views
 			var header = document.createElement("div");
 			$(header).addClass("irexplorer-header");
-			/* Insert the views */
+			// Insert the view
 			for (var view in options.viewList) {
 				var v = document.createElement("a");
 				$(v).addClass("irexplorer-view irexplorer-view-" + view);
 				$(v).data("irexplorer", view);
 				$(v).text(view);
 				$(v).click(function() {
-					/* Update the options with the new view */
+					// Update the options with the new view
 					var options = $(obj).data("irexplorer");
 					options.view = $(this).data("irexplorer");
 					$(obj).data("irexplorer", options);
-					/* Trigger the change */
+					// Trigger the change
 					$.fn.irexplorer.fetch.call(obj, options.irexplorer.current);
 				});
 				$(header).append(v);
 			}
 			$(this).append(header);
-			/* Create the container that will contain the browser data */
+			// Create the container that will contain the browser data
 			var container = document.createElement("div");
 			$(container).addClass("irexplorer-container");
 			$(this).append(container);
@@ -738,25 +738,24 @@ IrexplorerDialog.defaultOptions = {
 /**
  * Addon to support bootstrap
  */
+/*
 var irexplorerUpdateOriginal = $().irexplorer.defaults.update;
 var irexplorerCreateOriginal = $().irexplorer.defaults.create;
 (function($) {
 	$.fn.irexplorer.defaults.create = function() {
 		irexplorerCreateOriginal.call(this);
-		/* Update the view buttons */
+		// Update the view buttons
 		$(this).find(".irexplorer-header").css("text-align", "right");
 		$(this).find(".irexplorer-header .irexplorer-view").wrap("<li></li>").parent().wrapAll("<ul class=\"pagination\"></ul>");
-		/* Update the icons */
+		// Update the icons
 		$(this).find(".irexplorer-header .irexplorer-view-list").html("&nbsp;<span class=\"glyphicon glyphicon-th-list\" aria-hidden=\"true\"></span>&nbsp;");
 		$(this).find(".irexplorer-header .irexplorer-view-thumbnails").html("&nbsp;<span class=\"glyphicon glyphicon-th\" aria-hidden=\"true\"></span>&nbsp;");
-
-
 	}
 	$.fn.irexplorer.defaults.update = function(categories, rows, view) {
 		irexplorerUpdateOriginal.call(this, categories, rows, view);
 		switch (view) {
 		case "list":
-			/* Add the table class to the table */
+			// Add the table class to the table
 			$(this).find("table").addClass("table table-hover");
 			break;
 		case "thumbnails":
@@ -766,12 +765,12 @@ var irexplorerCreateOriginal = $().irexplorer.defaults.create;
 			});
 			break;
 		}
-		/* Select the right view */
+		// Select the right view
 		$(this).find(".irexplorer-header .irexplorer-view").parent().removeClass("active");
 		$(this).find(".irexplorer-header .irexplorer-view-" + view).parent().addClass("active");
 	}
 })(jQuery);
-
+*/
 /**
  * Update the dialog
  */
@@ -780,10 +779,10 @@ IrexplorerDialog.defaultOptions.dialogCreate = function(options, createBody) {
 
 	var modal = document.createElement("div");
 	$(modal).addClass("modal fade irexplorer-dialog");
-	/* Hack as sometimes the dialog is not above all elements */
+	// Hack as sometimes the dialog is not above all elements
 	$(modal).css("z-index", "2147483647");
 	$(modal).prop("role", "dialog");
-	/* Sub container */
+	// Sub containe
 	var dialog = document.createElement("div");
 	$(dialog).addClass("modal-dialog modal-lg");
 	/* Content */

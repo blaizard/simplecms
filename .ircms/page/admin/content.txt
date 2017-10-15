@@ -1,6 +1,11 @@
 ---ircms-content---
 
 <?php
+	/* Add dependencies */
+	if (!IRCMS_ADMIN) {
+		die();
+	}
+
 	/* Do not cache any of the admin area files */
 	$this->cacheDisable();
 

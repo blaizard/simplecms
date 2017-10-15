@@ -23,12 +23,12 @@
 	/**
 	 * Enable the admin section
 	 */
-	define('IRCMS_CONF_ADMIN', false);
+	define('IRCMS_CONF_ADMIN', true);
 
 	/**
 	 * Enable the access privileges
 	 */
-	define('IRCMS_CONF_ACCESS', false);
+	define('IRCMS_CONF_ACCESS', true);
 
 	/**
 	 * Path where the root of the content is located.

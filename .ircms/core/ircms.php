@@ -52,11 +52,11 @@
 	define('IRCMS_ROUTING', (defined('IRCMS_CONF_ROUTING')) ? IRCMS_CONF_ROUTING : false);
 
 	// Default getting started page location
-	define('IRCMS_GETTINGSTARTED', '.ircms/page/gettingstarted.html');
+	define('IRCMS_GETTINGSTARTED', '.ircms/page/gettingstarted/');
 
 	class Ircms {
 
-		/* The environement context */
+		// The environement context
 		private $_env;
 		private $_page;
 		private $_cache;
@@ -89,7 +89,16 @@
 			$this->_cache = new IrcmsCache(IrcmsPath::concat($this->_env->get("path"), $this->_env->id()));
 
 			// Initialize the page associated to it
-			$this->_page = new IrcmsPage($this->_env, $this->_cache);
+			try {
+				$this->_page = new IrcmsPage($this->_env, $this->_cache);
+			}
+			catch (Exception $e) {
+				// If an exception occur at this stage, it means that it cannot find the template,
+				// hence this most likely occurs when the page is new, so show the getting started page
+				if ($this->_env->get('path') == DIRECTORY_SEPARATOR) {
+					self::__construct(IRCMS_GETTINGSTARTED);
+				}
+			}
 		}
 
 		/**

@@ -2,10 +2,13 @@
 
 This CMS is made to be simple and flexible. There is no need for database installation, it works out of the box within the directoy tree it is in.
 
+By default, the structure of the CMS is the same as the structure of the sub directories. For example, if you need to create a new page call "helloworld",
+simply create a directory "helloworld" with a "content.txt" file. That's it!
+
 ## Features
 
 - Simplicity
-- Caching of the most used files
+- File caching
 
 ## Prerequisits
 
@@ -40,7 +43,32 @@ url.rewrite-once = ("^/(.*)" => "/index.php?path=$1")
 
 ## Configuration
 
-The configuration is done within the file .ircms.php
+The configuration is done within the file .ircms.php at the root of the directory.
+The following configuration items are available:
+
+### IRCMS_CONF_DEBUG
+
+Set/unset debug mode. It will increase the verbosity and disable page optimization.
+
+### IRCMS_CONF_CACHE
+
+Set the directory of the cache. By default it is set to the root directory.
+
+### IRCMS_CONF_CACHE_TIME
+
+Cache validy in second, after this time, if not touched, the garbage collector will delete the entry.
+
+### IRCMS_CONF_ADMIN
+
+Activate/deactivate admin section.
+
+### IRCMS_CONF_DATA
+
+The root path of the data. By default it is set to the root directory.
+
+### IRCMS_CONF_THEME
+
+Change the path of the theme. The theme is used for default pages such as 404 or the admin section.
 
 ### IRCMS_CONF_ROUTING
 

@@ -23,28 +23,28 @@
 		 */
 		public function __construct($env, $cache) {
 
-			/* Initialize some of the variables */
+			// Initialize some of the variables
 			$this->_cssHeader = array();
 			$this->_jsHeader = array();
 			$this->_header = array();
 			$this->_idList = array();
 
-			/* Save the environement object */
+			// Save the environement object
 			$this->_env = $env; 
 
-			/* Save the cache object */
+			// Save the cache object
 			$this->_cache = $cache;
 
-			/* Look for the page, the first one from the current directory */
+			// Look for the page, the first one from the current directory
 			if (!($page = $this->fetchIndex())) {
 				return false;
 			}
 
-			/* Update the environment path */
+			// Update the environment path
 			$env->add("fullpath", "index", dirname($page).DIRECTORY_SEPARATOR);
 			$env->add("url", "index", IrcmsPath::concat($env->get("url", "root"), substr(dirname($page), strlen($env->get("fullpath", "root")))."/"));
 
-			/* Save the page location */
+			// Save the page location
 			$this->_page = $page;
 		}
 
@@ -257,14 +257,14 @@
 		 * This function fetch the index used by the page
 		 */
 		private function fetchIndex() {
-			/* Look for the page, the first one from the current directory */
+			// Look for the page, the first one from the current directory
 			$path = IrcmsPath::find($this->_env->get('fullpath', 'current'), $this->_env->get('fullpath', 'data'), IRCMS_INDEX);
-			/* Returns an error if nothing is found */
+			// Returns an error if nothing is found
 			if (!$path) {
-				/* If path is root, path, show the getting started page */
-				if ($this->_env->get('path') == DIRECTORY_SEPARATOR) {
-					return IrcmsPath::concat($this->_env->get('fullpath', 'current'), IRCMS_GETTINGSTARTED);
-				}
+				// If path is root, path, show the getting started page
+				//if ($this->_env->get('path') == DIRECTORY_SEPARATOR) {
+				//	return IrcmsPath::concat($this->_env->get('fullpath', 'root'), IRCMS_GETTINGSTARTED);
+				//}
 				throw new Exception("Cannot find the template `".IRCMS_INDEX."' in `".$this->_env->get('fullpath', 'current')."'");
 			}
 

@@ -8,6 +8,12 @@
 	// Create the routing and configure it
 	$app = new Routing();
 
+	// Set custom routing if any
+	if (IRCMS_ROUTING) {
+		include(IRCMS_ROUTING);
+	}
+
+	// Default routing
 	$app->route(array("get", "post"), "{path:.*}", function($vars) {
 		$ircms = new Ircms(
 				// If The path varaible is defined in the query string

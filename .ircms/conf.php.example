@@ -6,7 +6,7 @@
 	/**
 	 * Debug mode, increase the verbosity and disable page optimization.
 	 */
-	define('IRCMS_CONF_DEBUG', true);
+	define('IRCMS_CONF_DEBUG', false);
 
 	/**
 	 * The path of the cache.
@@ -16,7 +16,7 @@
 	define('IRCMS_CONF_CACHE', '.cache/');
 
 	/**
-	 * Cache validy in second, after this time, the garbage collector will delete the entry.
+	 * Cache validy in second, after this time, if not touched, the garbage collector will delete the entry.
 	 */
 	define('IRCMS_CONF_CACHE_TIME', 3600 * 24);
 
@@ -41,4 +41,12 @@
 	 * errors and so on.
 	 */
 	define('IRCMS_CONF_THEME', '.ircms/theme/default');
+
+	/**
+	 * Set a custom routing script. It takes into argument the path of the script.
+	 * Note, the script can use the global variable $apps whcih is an instance of
+	 * the class Routing tyo set its configuration.
+	 * If the defines evaluates to false, then it is not set into consideration.
+	 */
+	define('IRCMS_CONF_ROUTING', false);
 ?>

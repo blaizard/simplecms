@@ -49,6 +49,10 @@
 	define('IRCMS_PASSWORD', (defined('IRCMS_CONF_PASSWORD')) ? IRCMS_CONF_PASSWORD : '.ircmspwd');
 	define('IRCMS_CONTENT', (defined('IRCMS_CONF_CONTENT')) ? IRCMS_CONF_CONTENT : 'content.txt');
 	define('IRCMS_TEMPLATE', (defined('IRCMS_CONF_TEMPLATE')) ? IRCMS_CONF_TEMPLATE : '.template');
+	define('IRCMS_ROUTING', (defined('IRCMS_CONF_ROUTING')) ? IRCMS_CONF_ROUTING : false);
+
+	// Default getting started page location
+	define('IRCMS_GETTINGSTARTED', '.ircms/page/gettingstarted.html');
 
 	class Ircms {
 

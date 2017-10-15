@@ -166,10 +166,12 @@
 				if (isset($mime[$ext])) {
 					$mime_type = $mime[$ext];
 				}
+				else if (class_exists("finfo")) {
+					$finfo = new finfo(FILEINFO_MIME_TYPE);
+			    	$mime_type = $finfo->file($file);
+				}
 				else {
-					$finfo = finfo_open(FILEINFO_MIME_TYPE);
-			    	$mime_type = finfo_file($finfo, $file);
-					finfo_close($finfo);
+					$mime_type = "application/octet-stream";
 				}
 				// Send the right content type according to the file
 				header("Content-type: ".$mime_type);
